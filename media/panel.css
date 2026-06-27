@@ -198,6 +198,19 @@ body.wa-ui-light {
 .wa-popover.wa-show { display: block; }
 .wa-popover .wa-form { border: none; margin: 0; padding: 0; background: none; }
 
+/* right-click context menu (评论 + 复制 + 全选) */
+.wa-menu {
+  position: fixed; z-index: 2147483647; min-width: 150px; padding: 4px;
+  font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--wa-fg);
+  background: var(--wa-bg); border: 1px solid var(--wa-border);
+  border-radius: 8px; box-shadow: 0 8px 28px rgba(0, 0, 0, .4);
+}
+.wa-menu-item { padding: 6px 12px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.wa-menu-item:hover { background: var(--wa-hover); }
+.wa-menu-item.wa-disabled { opacity: .4; cursor: default; }
+.wa-menu-item.wa-disabled:hover { background: none; }
+.wa-menu-sep { height: 1px; margin: 4px 6px; background: var(--wa-border); }
+
 /* in-webview confirm dialog */
 .wa-mask {
   position: fixed; inset: 0; z-index: 2147483647; display: flex; align-items: center; justify-content: center;

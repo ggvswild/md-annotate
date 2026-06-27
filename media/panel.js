@@ -24,7 +24,7 @@
   var altDown = false;
   var hover = null;
   var panel, listEl, cntEl, launcher, badgeEl;
-  var bubble = null, popover = null, lastRect = null;
+  var bubble = null, popover = null, lastRect = null, pendingPayload = null, ctxMenu = null;
   var toc = null, tocBody = null, tocLauncher = null;
 
   build();
@@ -227,21 +227,13 @@
     bubble.textContent = '💬 评论';
     bubble.addEventListener('mousedown', function (e) { e.preventDefault(); }); // 保住选区
     bubble.onclick = function () {
-      var p = captureSelection();
-      var rect = lastRect;
+      var p = pendingPayload, rect = lastRect;
       hideBubble();
       if (p) openForm(p, rect);
     };
     document.body.appendChild(bubble);
   }
-  function showBubble() {
-    if (altDown || popover) return;
-    var sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) return hideBubble();
-    var range = sel.getRangeAt(0);
-    if (!doc.contains(range.commonAncestorContainer)) return hideBubble();
-    var rects = range.getClientRects();
-    var r = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+  function placeBubble(r) {
     lastRect = r;
     if (!bubble) makeBubble();
     bubble.style.display = 'block';
@@ -251,7 +243,61 @@
     bubble.style.left = Math.max(4, left) + 'px';
     bubble.style.top = Math.max(4, top) + 'px';
   }
-  function hideBubble() { if (bubble) bubble.style.display = 'none'; }
+  function showBubble() { // 文字选区路径
+    if (altDown || popover) return;
+    var p = captureSelection();
+    if (!p) return hideBubble();
+    var range = window.getSelection().getRangeAt(0);
+    var rects = range.getClientRects();
+    var r = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+    pendingPayload = p;
+    placeBubble(r);
+  }
+  function hideBubble() { if (bubble) bubble.style.display = 'none'; pendingPayload = null; }
+
+  /* ---------------- 右键上下文菜单（评论 + 复制 + 全选） ---------------- */
+  function closeContextMenu() { if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; } }
+  function selectAllDoc() {
+    try { var r = document.createRange(); r.selectNodeContents(doc); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) {}
+  }
+  function copyViaHost(text, message) { vscodeApi.postMessage({ type: 'copy', text: String(text || ''), message: message }); }
+  function showContextMenu(x, y, payload, target) {
+    closeContextMenu();
+    hideBubble();
+    var sel = window.getSelection();
+    var hasSel = !!(sel && !sel.isCollapsed && sel.toString().trim());
+    var selText = hasSel ? sel.toString() : '';
+    var isImg = target && target.tagName === 'IMG';
+    var link = target && target.closest ? target.closest('a') : null;
+
+    var entries = [];
+    entries.push({ label: '💬 评论' + (isImg ? '此图片' : (hasSel ? '选区' : '此处')),
+      act: function () { openForm(payload, { left: x, right: x, top: y, bottom: y }); } });
+    entries.push({ sep: true });
+    entries.push({ label: '复制', disabled: !hasSel, act: function () { copyViaHost(selText, '已复制选中文字'); } });
+    if (isImg) entries.push({ label: '复制图片链接', act: function () { copyViaHost(target.getAttribute('src'), '已复制图片链接'); } });
+    if (link) entries.push({ label: '复制链接地址', act: function () { copyViaHost(link.getAttribute('href'), '已复制链接地址'); } });
+    entries.push({ label: '全选', act: selectAllDoc });
+
+    ctxMenu = document.createElement('div');
+    ctxMenu.className = 'wa-menu';
+    ctxMenu.addEventListener('mousedown', function (e) { e.preventDefault(); }); // 保住选区
+    entries.forEach(function (en) {
+      if (en.sep) { var s = document.createElement('div'); s.className = 'wa-menu-sep'; ctxMenu.appendChild(s); return; }
+      var it = document.createElement('div');
+      it.className = 'wa-menu-item' + (en.disabled ? ' wa-disabled' : '');
+      it.textContent = en.label;
+      if (!en.disabled) it.onclick = function () { closeContextMenu(); en.act(); };
+      ctxMenu.appendChild(it);
+    });
+    document.body.appendChild(ctxMenu);
+    var w = ctxMenu.offsetWidth, h = ctxMenu.offsetHeight, pad = 6;
+    var left = x, top = y;
+    if (left + w > window.innerWidth - pad) left = window.innerWidth - w - pad;
+    if (top + h > window.innerHeight - pad) top = window.innerHeight - h - pad;
+    ctxMenu.style.left = Math.max(pad, left) + 'px';
+    ctxMenu.style.top = Math.max(pad, top) + 'px';
+  }
 
   /* ---------------- 就地评论框 ---------------- */
   function openForm(payload, rect, editIndex) {
@@ -289,8 +335,17 @@
     ta.focus();
     popover.querySelector('.wa-add').onclick = function () {
       var t = popover.querySelector('input[name=wa-t]:checked').value;
+      var text = ta.value.trim();
+      if (editing && !text) { // 编辑时清空内容 → 删除该条批注
+        items.splice(editIndex, 1);
+        persist();
+        render();
+        closePopover();
+        tip('内容为空，已删除该批注');
+        return;
+      }
       payload.type = t;
-      payload.comment = ta.value.trim();
+      payload.comment = text;
       if (t === 'replacement' && !payload.replacementText) { payload.replacementText = payload.selectedText; }
       if (t !== 'deletion' && !payload.comment) { ta.focus(); ta.classList.add('wa-err'); return; }
       if (!editing) { items.push(payload); }
@@ -363,13 +418,26 @@
       contextPrefix: '', contextSuffix: ''
     };
   }
+  function captureImage(img) {
+    var block = nearestBlock(img) || img;
+    var rng = blockRange(block);
+    var alt = (img.getAttribute('alt') || '').trim();
+    var name = '';
+    try { name = decodeURIComponent((img.getAttribute('src') || '').split('/').pop().split('?')[0]); } catch (e) { name = ''; }
+    return {
+      id: uid(), mode: 'image', createdAt: Date.now(),
+      selectedText: ('🖼 ' + (alt || name || '图片')).slice(0, 400), comment: '',
+      sourceLineStart: rng.start, sourceLineEnd: rng.end, sourceText: rng.text,
+      contextPrefix: '', contextSuffix: ''
+    };
+  }
 
   /* ---------------- Alt 选段（常驻，无模式开关） ---------------- */
   function clearHover() { if (hover) { hover.classList.remove('wa-hl'); hover = null; } }
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Alt') { altDown = true; hideBubble(); }
-    if (e.key === 'Escape') { hideBubble(); closePopover(); clearHover(); }
+    if (e.key === 'Escape') { hideBubble(); closePopover(); clearHover(); closeContextMenu(); }
   });
   document.addEventListener('keyup', function (e) {
     if (e.key === 'Alt') { altDown = false; clearHover(); }
@@ -396,6 +464,7 @@
 
   /* 划选完成 → 弹气泡；点别处 → 收起 */
   document.addEventListener('mouseup', function (e) {
+    if (e.button !== 0) return; // 仅左键划选触发；右键由 contextmenu 处理
     if (panel.contains(e.target)) return;
     if (toc && toc.contains(e.target)) return;
     if (tocLauncher && tocLauncher.contains(e.target)) return;
@@ -404,11 +473,32 @@
     setTimeout(showBubble, 0);
   });
   document.addEventListener('mousedown', function (e) {
+    if (ctxMenu && ctxMenu.contains(e.target)) return; // 让菜单项 click 先触发
+    closeContextMenu();
     if (bubble && bubble.contains(e.target)) return;
     hideBubble();
     if (popover && !popover.contains(e.target)) closePopover();
   });
-  document.addEventListener('scroll', function () { hideBubble(); }, true);
+  document.addEventListener('scroll', function () { hideBubble(); closeContextMenu(); }, true);
+
+  /* 右键文档内容 → 针对插入点 / 图片 / 段落 弹同样的 💬 气泡 */
+  document.addEventListener('contextmenu', function (e) {
+    if (!doc.contains(e.target)) return; // 仅接管文档内容区，面板/大纲/空白处仍走系统菜单
+    if (popover) return;
+    var payload, sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.toString().trim() && doc.contains(sel.anchorNode)) {
+      payload = captureSelection();
+    } else if (e.target.tagName === 'IMG') {
+      payload = captureImage(e.target);
+    } else {
+      var blk = nearestBlock(e.target);
+      if (!blk) return; // 空白处右键不接管
+      payload = captureBlock(blk);
+    }
+    if (!payload) return;
+    e.preventDefault();
+    showContextMenu(e.clientX, e.clientY, payload, e.target);
+  }, true);
 
   /* ---------------- 列表 ---------------- */
   function render() {
@@ -481,6 +571,7 @@
       var b = blocks[j];
       b.classList.remove('wa-annot-block', 'wa-annot-active');
       b.removeAttribute('data-aid'); b.removeAttribute('data-badge');
+      b.onclick = null;
     }
   }
   function applyHighlights() {
@@ -488,11 +579,16 @@
     items.forEach(function (ann, i) {
       var block = ann.sourceLineStart ? doc.querySelector('[data-source-line="' + ann.sourceLineStart + '"]') : null;
       if (!block) return;
-      if (ann.mode === 'block') {
-        block.classList.add('wa-annot-block');
-        block.setAttribute('data-aid', ann.id);
-        block.setAttribute('data-badge', String(i + 1));
-        block.onclick = function (e) { if (e.altKey) return; setActiveHighlight(ann.id); };
+      if (ann.mode === 'block' || ann.mode === 'image') {
+        var target = block;
+        if (ann.mode === 'image' && block.querySelector) {
+          var im = block.querySelector('img');
+          if (im) target = im;
+        }
+        target.classList.add('wa-annot-block');
+        target.setAttribute('data-aid', ann.id);
+        target.setAttribute('data-badge', String(i + 1));
+        target.onclick = function (e) { if (e.altKey) return; setActiveHighlight(ann.id); };
       } else {
         var range = findRange(block, ann.selectedText);
         if (range) wrapRange(range, ann, i + 1);
@@ -559,7 +655,7 @@
   /* ---------------- 导出 / 复制 / 持久化 ---------------- */
   function payloadText() { return JSON.stringify({ file: BOOT.filePath, count: items.length, annotations: items }, null, 2); }
   function exportJson() { if (!items.length) return tip('没有批注可导出'); vscodeApi.postMessage({ type: 'save', annotations: items }); }
-  function copyJson() { if (!items.length) return tip('没有批注可复制'); vscodeApi.postMessage({ type: 'copy', text: payloadText() }); }
+  function copyJson() { if (!items.length) return tip('没有批注可复制'); vscodeApi.postMessage({ type: 'copy', text: payloadText(), message: '已复制 JSON，粘贴给 AI 即可' }); }
   function persist() { vscodeApi.postMessage({ type: 'persist', annotations: items }); }
 
   /* ---------------- 工具 ---------------- */

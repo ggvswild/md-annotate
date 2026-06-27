@@ -250,7 +250,7 @@ class AnnotatePanel {
         return;
       case 'copy':
         await vscode.env.clipboard.writeText(String(msg.text ?? ''));
-        this.post({ type: 'info', message: '已复制 JSON，粘贴给 AI 即可' });
+        this.post({ type: 'info', message: typeof msg.message === 'string' ? msg.message : '已复制到剪贴板' });
         return;
       case 'reveal':
         await this.revealSourceLine(msg.line);
