@@ -233,7 +233,7 @@
     var s = sel.toString();
     var at = ctx.indexOf(s);
     return {
-      id: uid(), mode: 'text', selectedText: clean(s).slice(0, 400), comment: '',
+      id: uid(), mode: 'text', createdAt: Date.now(), selectedText: clean(s).slice(0, 400), comment: '',
       sourceLineStart: rng.start, sourceLineEnd: rng.end, sourceText: rng.text,
       contextPrefix: at > -1 ? clean(ctx.slice(Math.max(0, at - 40), at)) : '',
       contextSuffix: at > -1 ? clean(ctx.slice(at + s.length, at + s.length + 40)) : ''
@@ -243,7 +243,7 @@
     var block = nearestBlock(el) || el;
     var rng = blockRange(block);
     return {
-      id: uid(), mode: 'block', selectedText: clean(block.textContent || '').slice(0, 400), comment: '',
+      id: uid(), mode: 'block', createdAt: Date.now(), selectedText: clean(block.textContent || '').slice(0, 400), comment: '',
       sourceLineStart: rng.start, sourceLineEnd: rng.end, sourceText: rng.text,
       contextPrefix: '', contextSuffix: ''
     };
@@ -310,7 +310,8 @@
         '<span class="wa-line">L' + (it.sourceLineStart || '?') + '</span>' +
         '<div class="wa-snip">' + esc(it.selectedText) + '</div>' +
         (it.comment ? '<div class="wa-cmt">' + esc(it.comment) + '</div>' : '') +
-        '<span class="wa-goto" data-i="' + i + '">↪ 定位源码</span>';
+        '<span class="wa-goto" data-i="' + i + '">↪ 定位源码</span>' +
+        '<span class="wa-time">' + fmtTime(it.createdAt) + '</span>';
       li.onclick = function (e) {
         if (e.target.classList.contains('wa-del')) { items.splice(i, 1); persist(); render(); return; }
         if (e.target.classList.contains('wa-goto')) { vscodeApi.postMessage({ type: 'reveal', line: it.sourceLineStart }); return; }
@@ -338,6 +339,13 @@
   function clean(s) { return String(s).replace(/\s+/g, ' ').trim(); }
   function uid() { return 'a' + (items.length + 1) + '_' + Math.floor(performance.now()); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+  function fmtTime(ts) {
+    if (!ts) return '';
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    function p(n) { return n < 10 ? '0' + n : '' + n; }
+    return p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
 
   var tipEl = null, tipTimer = null;
   function tip(msg) {
