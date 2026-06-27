@@ -123,3 +123,48 @@ body {
 .markdown-body hr { border: none; border-top: 1px solid var(--md-border); margin: 1.5em 0; }
 .markdown-body [data-source-line]:hover { cursor: text; }
 ::selection { background: rgba(14, 99, 156, .35); }
+
+/* ---------------- 批注高亮（琥珀色选框 #f59e0b） ---------------- */
+.wa-annot {
+  position: relative;
+  background: rgba(245, 158, 11, .08);
+  border: 2px solid #f59e0b;
+  border-radius: 4px;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  cursor: pointer;
+  transition: box-shadow .15s ease, background .15s ease;
+}
+.wa-annot-block {
+  position: relative;
+  background: rgba(245, 158, 11, .08);
+  border: 2px solid #f59e0b;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: box-shadow .15s ease, background .15s ease;
+}
+/* 激活状态：外环光晕（30%） */
+.wa-annot-active {
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, .3), 0 0 8px 1px rgba(245, 158, 11, .3);
+}
+/* 评论计数徽章 18px / 10px */
+.wa-annot::after, .wa-annot-block::after {
+  content: attr(data-badge);
+  position: absolute; top: -10px; right: -8px;
+  width: 18px; height: 18px; line-height: 18px; box-sizing: border-box;
+  border-radius: 50%; font-size: 10px; font-weight: 600; text-align: center;
+  background: #f59e0b; color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+/* 预设：低调（无边框、6% 背景） */
+body.wa-hl-subtle .wa-annot { border: none; background: rgba(245, 158, 11, .06); padding: 0; margin: 0; border-radius: 0; }
+body.wa-hl-subtle .wa-annot-block { border: none; background: rgba(245, 158, 11, .06); }
+/* 预设：仅下划线（无背景、底部 2px 虚线） */
+body.wa-hl-underline .wa-annot { border: none; background: none; border-bottom: 2px dashed #f59e0b; padding: 0; margin: 0; border-radius: 0; }
+body.wa-hl-underline .wa-annot-block { border: none; background: none; border-bottom: 2px dashed #f59e0b; border-radius: 0; }
+/* 低调 / 下划线 预设下不显示徽章 */
+body.wa-hl-subtle .wa-annot::after, body.wa-hl-subtle .wa-annot-block::after,
+body.wa-hl-underline .wa-annot::after, body.wa-hl-underline .wa-annot-block::after { display: none; }
+/* 深色主题用更深的琥珀 #d97706 */
+body.theme-dark .wa-annot, body.theme-dark .wa-annot-block { border-color: #d97706; }
+body.theme-dark .wa-annot::after, body.theme-dark .wa-annot-block::after { background: #d97706; }
+body.theme-dark.wa-hl-underline .wa-annot, body.theme-dark.wa-hl-underline .wa-annot-block { border-bottom-color: #d97706; }

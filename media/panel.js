@@ -44,6 +44,14 @@
             THEMES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('') +
           '</select>' +
         '</div>' +
+        '<div class="wa-theme-row">' +
+          '<span>🖍 标注</span>' +
+          '<select class="wa-hl">' +
+            '<option value="default">选框 (默认)</option>' +
+            '<option value="subtle">低调</option>' +
+            '<option value="underline">下划线</option>' +
+          '</select>' +
+        '</div>' +
         '<div class="wa-hint">划选文字弹 💬 评论 · 按住 <b>Alt</b> 点击评论整段</div>' +
         '<div class="wa-row">' +
           '<div class="wa-btn wa-text">✍️ 评论当前选区</div>' +
@@ -79,9 +87,15 @@
     themeSel.value = BOOT.theme || 'github';
     themeSel.onchange = function () {
       var t = themeSel.value;
-      document.body.className = 'theme-' + t;
+      setThemeClass(t);
       vscodeApi.postMessage({ type: 'theme', theme: t });
     };
+
+    var hlSel = panel.querySelector('.wa-hl');
+    var savedHl = getSaved().hlStyle || 'default';
+    hlSel.value = savedHl;
+    setHlClass(savedHl);
+    hlSel.onchange = function () { setHlClass(hlSel.value); patchState({ hlStyle: hlSel.value }); };
     enableDrag();
     enableResize();
     applySavedHeight();
@@ -400,6 +414,7 @@
     var n = items.length;
     cntEl.textContent = n ? '(' + n + ')' : '';
     if (badgeEl) { badgeEl.textContent = n ? String(n) : ''; badgeEl.style.display = n ? 'block' : 'none'; }
+    applyHighlights();
     if (!n) { listEl.innerHTML = '<div class="wa-empty">还没有批注</div>'; return; }
     listEl.innerHTML = '';
     items.forEach(function (it, i) {
@@ -417,7 +432,7 @@
       li.onclick = function (e) {
         if (e.target.classList.contains('wa-del')) { items.splice(i, 1); persist(); render(); return; }
         if (e.target.classList.contains('wa-goto')) { vscodeApi.postMessage({ type: 'reveal', line: it.sourceLineStart }); return; }
-        flash(it);
+        focusAnnotation(it);
       };
       listEl.insertBefore(li, listEl.firstChild); // 新评论置顶（数据数组仍按时间顺序）
     });
@@ -429,6 +444,105 @@
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el.classList.add('wa-flash');
     setTimeout(function () { el.classList.remove('wa-flash'); }, 1200);
+  }
+
+  /* ---------------- 主题 / 标注样式类 ---------------- */
+  function setThemeClass(t) {
+    document.body.classList.remove('theme-vscode', 'theme-github', 'theme-sepia', 'theme-dark', 'theme-notion');
+    document.body.classList.add('theme-' + t);
+  }
+  function setHlClass(s) {
+    document.body.classList.remove('wa-hl-default', 'wa-hl-subtle', 'wa-hl-underline');
+    document.body.classList.add('wa-hl-' + s);
+  }
+
+  /* ---------------- 批注高亮（琥珀色选框） ---------------- */
+  function clearHighlights() {
+    var spans = doc.querySelectorAll('span.wa-annot');
+    for (var i = 0; i < spans.length; i++) {
+      var s = spans[i], parent = s.parentNode;
+      while (s.firstChild) parent.insertBefore(s.firstChild, s);
+      parent.removeChild(s);
+      parent.normalize();
+    }
+    var blocks = doc.querySelectorAll('.wa-annot-block');
+    for (var j = 0; j < blocks.length; j++) {
+      var b = blocks[j];
+      b.classList.remove('wa-annot-block', 'wa-annot-active');
+      b.removeAttribute('data-aid'); b.removeAttribute('data-badge');
+    }
+  }
+  function applyHighlights() {
+    clearHighlights();
+    items.forEach(function (ann, i) {
+      var block = ann.sourceLineStart ? doc.querySelector('[data-source-line="' + ann.sourceLineStart + '"]') : null;
+      if (!block) return;
+      if (ann.mode === 'block') {
+        block.classList.add('wa-annot-block');
+        block.setAttribute('data-aid', ann.id);
+        block.setAttribute('data-badge', String(i + 1));
+        block.onclick = function (e) { if (e.altKey) return; setActiveHighlight(ann.id); };
+      } else {
+        var range = findRange(block, ann.selectedText);
+        if (range) wrapRange(range, ann, i + 1);
+      }
+    });
+  }
+  // 在块内按规范化空白匹配 needle，返回 Range
+  function findRange(container, needle) {
+    needle = String(needle || '').replace(/\s+/g, ' ').trim();
+    if (!needle) return null;
+    var norm = '', map = [], prevSpace = false;
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) {
+      var text = node.nodeValue;
+      for (var i = 0; i < text.length; i++) {
+        if (/\s/.test(text[i])) {
+          if (prevSpace) continue;
+          norm += ' '; map.push({ node: node, offset: i }); prevSpace = true;
+        } else {
+          norm += text[i]; map.push({ node: node, offset: i }); prevSpace = false;
+        }
+      }
+    }
+    var at = norm.indexOf(needle);
+    if (at === -1) return null;
+    var startPos = map[at], endPos = map[at + needle.length - 1];
+    if (!startPos || !endPos) return null;
+    try {
+      var range = document.createRange();
+      range.setStart(startPos.node, startPos.offset);
+      range.setEnd(endPos.node, endPos.offset + 1);
+      return range;
+    } catch (e) { return null; }
+  }
+  function wrapRange(range, ann, number) {
+    var span = document.createElement('span');
+    span.className = 'wa-annot';
+    span.setAttribute('data-aid', ann.id);
+    span.setAttribute('data-badge', String(number));
+    span.title = ann.comment || ann.selectedText || '';
+    try {
+      range.surroundContents(span);
+    } catch (e) {
+      try {
+        var frag = range.extractContents();
+        span.appendChild(frag);
+        range.insertNode(span);
+      } catch (e2) { return; }
+    }
+    span.onclick = function (e) { e.stopPropagation(); setActiveHighlight(ann.id); };
+  }
+  function setActiveHighlight(aid) {
+    var prev = doc.querySelectorAll('.wa-annot-active');
+    for (var i = 0; i < prev.length; i++) prev[i].classList.remove('wa-annot-active');
+    var el = doc.querySelector('[data-aid="' + aid + '"]');
+    if (el) { el.classList.add('wa-annot-active'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  }
+  function focusAnnotation(it) {
+    if (it.id && doc.querySelector('[data-aid="' + it.id + '"]')) setActiveHighlight(it.id);
+    else flash(it);
   }
 
   /* ---------------- 导出 / 复制 / 持久化 ---------------- */
