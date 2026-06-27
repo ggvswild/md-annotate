@@ -45,7 +45,7 @@ body.wa-ui-light {
 
 .wa-panel {
   position: fixed; right: 16px; bottom: 16px; z-index: 2147483646;
-  width: 340px; max-height: 74vh; display: none; flex-direction: column;
+  width: 340px; max-height: 50vh; display: none; flex-direction: column;
   font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif);
   color: var(--wa-fg); background: var(--wa-bg);
   border: 1px solid var(--wa-border);
@@ -62,8 +62,9 @@ body.wa-ui-light {
   display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: move; user-select: none;
   background: var(--wa-bg-2); color: var(--wa-fg-2);
 }
-.wa-hd b { flex: 1; font-size: 13px; }
-.wa-hd .wa-cnt { opacity: .8; font-size: 12px; }
+.wa-hd b { flex: 0 0 auto; font-size: 13px; }
+.wa-hd .wa-file { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; opacity: .7; font-size: 12px; }
+.wa-hd .wa-cnt { flex: 0 0 auto; opacity: .8; font-size: 12px; }
 .wa-hd .wa-min { cursor: pointer; opacity: .7; font-size: 18px; line-height: 1; font-weight: 700; padding: 0 2px; }
 .wa-hd .wa-min:hover { opacity: 1; }
 .wa-bd { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 12px; }
@@ -76,8 +77,6 @@ body.wa-ui-light {
   flex: 1; min-width: 0; padding: 5px 6px; border-radius: 6px; font: inherit; font-size: 12px;
   border: 1px solid var(--wa-input-border); background: var(--wa-input-bg); color: var(--wa-fg);
 }
-.wa-hint { font-size: 11px; opacity: .65; margin-bottom: 8px; line-height: 1.5; }
-.wa-hint b { opacity: .9; }
 .wa-row { display: flex; gap: 6px; margin-bottom: 8px; }
 .wa-btn {
   flex: 1; padding: 7px 8px; border-radius: 7px; cursor: pointer; font-size: 12px; text-align: center;
@@ -106,7 +105,7 @@ body.wa-ui-light {
   background: rgba(14, 99, 156, .25); color: var(--wa-fg); }
 .wa-li .wa-tag.replacement { background: rgba(255, 125, 0, .22); }
 .wa-li .wa-tag.deletion { background: rgba(245, 63, 63, .22); }
-.wa-li .wa-line { font-size: 11px; opacity: .6; }
+.wa-li .wa-line { font-size: 11px; opacity: .6; margin-left: 5px; }
 .wa-li .wa-snip { opacity: .7; font-size: 12px; margin: 4px 0; word-break: break-all; max-height: 48px; overflow: auto; }
 .wa-li .wa-cmt { word-break: break-word; }
 .wa-li .wa-del { position: absolute; top: 6px; right: 8px; opacity: .5; }

@@ -36,7 +36,7 @@
     panel = document.createElement('div');
     panel.className = 'wa-panel wa-open';
     panel.innerHTML =
-      '<div class="wa-hd"><b>🔖 批注</b><span class="wa-cnt"></span><span class="wa-min" title="最小化">—</span></div>' +
+      '<div class="wa-hd"><b>🔖 批注</b><span class="wa-file"></span><span class="wa-cnt"></span><span class="wa-min" title="最小化">—</span></div>' +
       '<div class="wa-bd">' +
         '<div class="wa-ctrl-row">' +
           '<label class="wa-ctrl"><span>🎨 样式</span><select class="wa-theme">' +
@@ -55,10 +55,6 @@
             '<option value="light">亮色</option>' +
           '</select></label>' +
         '</div>' +
-        '<div class="wa-hint">划选文字弹 💬 评论 · 按住 <b>Alt</b> 点击评论整段</div>' +
-        '<div class="wa-row">' +
-          '<div class="wa-btn wa-text">✍️ 评论当前选区</div>' +
-        '</div>' +
         '<ul class="wa-list"></ul>' +
       '</div>' +
       '<div class="wa-ft">' +
@@ -70,12 +66,9 @@
 
     listEl = panel.querySelector('.wa-list');
     cntEl = panel.querySelector('.wa-cnt');
+    var fileEl = panel.querySelector('.wa-file');
+    if (BOOT.fileName) { fileEl.textContent = BOOT.fileName; fileEl.title = BOOT.fileName; }
 
-    panel.querySelector('.wa-text').onclick = function () {
-      var p = captureSelection();
-      if (!p) return tip('请先在文档里用鼠标选中一段文字');
-      openForm(p, selectionRect());
-    };
     panel.querySelector('.wa-export').onclick = exportJson;
     panel.querySelector('.wa-copy').onclick = copyJson;
     panel.querySelector('.wa-clear').onclick = function () {
@@ -259,13 +252,6 @@
     bubble.style.top = Math.max(4, top) + 'px';
   }
   function hideBubble() { if (bubble) bubble.style.display = 'none'; }
-  function selectionRect() {
-    try {
-      var range = window.getSelection().getRangeAt(0);
-      var rects = range.getClientRects();
-      return rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
-    } catch (e) { return null; }
-  }
 
   /* ---------------- 就地评论框 ---------------- */
   function openForm(payload, rect) {
