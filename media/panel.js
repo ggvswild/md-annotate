@@ -25,6 +25,7 @@
   var hover = null;
   var panel, listEl, cntEl, launcher, badgeEl;
   var bubble = null, popover = null, lastRect = null;
+  var toc = null, tocBody = null, tocLauncher = null;
 
   build();
   render();
@@ -92,6 +93,105 @@
     launcher.onclick = maximize;
     document.body.appendChild(launcher);
     badgeEl = launcher.querySelector('.wa-badge');
+
+    buildTocUI();
+  }
+
+  /* ---------------- 右上角大纲目录 (TOC) ---------------- */
+  function collectHeadings() {
+    var heads = doc.querySelectorAll('h1, h2, h3, h4');
+    var list = [];
+    for (var i = 0; i < heads.length; i++) {
+      var h = heads[i];
+      if (!h.id) h.id = 'wa-h-' + i;
+      var txt = (h.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!txt) continue;
+      list.push({ el: h, level: parseInt(h.tagName.charAt(1), 10), text: txt });
+    }
+    return list;
+  }
+  function nestHeadings(flat) {
+    var root = { level: 0, children: [] }, stack = [root];
+    flat.forEach(function (it) {
+      it.children = [];
+      while (stack.length && stack[stack.length - 1].level >= it.level) stack.pop();
+      stack[stack.length - 1].children.push(it);
+      stack.push(it);
+    });
+    return root.children;
+  }
+  function renderTocNodes(nodes) {
+    var ul = document.createElement('ul');
+    ul.className = 'wa-toc-ul';
+    nodes.forEach(function (node) {
+      var li = document.createElement('li');
+      li.className = 'wa-toc-li';
+      var row = document.createElement('div');
+      row.className = 'wa-toc-row lvl' + node.level;
+      var hasKids = node.children && node.children.length;
+      var tw = document.createElement('span');
+      tw.className = 'wa-toc-tw';
+      tw.textContent = hasKids ? '▾' : '';
+      var label = document.createElement('span');
+      label.className = 'wa-toc-label';
+      label.textContent = node.text;
+      label.title = node.text;
+      label.onclick = function () { jumpToHeading(node.el); };
+      row.appendChild(tw); row.appendChild(label); li.appendChild(row);
+      if (hasKids) {
+        li.appendChild(renderTocNodes(node.children));
+        tw.onclick = function (e) {
+          e.stopPropagation();
+          var collapsed = li.classList.toggle('wa-collapsed');
+          tw.textContent = collapsed ? '▸' : '▾';
+        };
+      }
+      ul.appendChild(li);
+    });
+    return ul;
+  }
+  function renderToc() {
+    var flat = collectHeadings();
+    tocBody.innerHTML = '';
+    if (!flat.length) { tocBody.innerHTML = '<div class="wa-empty">无标题</div>'; return; }
+    tocBody.appendChild(renderTocNodes(nestHeadings(flat)));
+  }
+  function jumpToHeading(el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el.classList.add('wa-flash');
+    setTimeout(function () { el.classList.remove('wa-flash'); }, 1200);
+  }
+  function buildTocUI() {
+    if (!collectHeadings().length) return; // 没标题就不显示大纲
+
+    toc = document.createElement('div');
+    toc.className = 'wa-toc';
+    toc.innerHTML =
+      '<div class="wa-toc-hd"><b>📑 大纲</b><span class="wa-toc-min" title="最小化">—</span></div>' +
+      '<div class="wa-toc-bd"></div>';
+    document.body.appendChild(toc);
+    tocBody = toc.querySelector('.wa-toc-bd');
+    toc.querySelector('.wa-toc-min').onclick = tocMinimize;
+
+    tocLauncher = document.createElement('div');
+    tocLauncher.className = 'wa-toc-launcher';
+    tocLauncher.textContent = '≡ 大纲';
+    tocLauncher.title = '展开大纲';
+    tocLauncher.onclick = tocMaximize;
+    document.body.appendChild(tocLauncher);
+
+    renderToc();
+    if (getSaved().tocOpen === true) tocMaximize(); else tocMinimize();
+  }
+  function tocMinimize() {
+    toc.classList.add('wa-hidden');
+    tocLauncher.classList.add('wa-show');
+    patchState({ tocOpen: false });
+  }
+  function tocMaximize() {
+    toc.classList.remove('wa-hidden');
+    tocLauncher.classList.remove('wa-show');
+    patchState({ tocOpen: true });
   }
 
   function minimize() {
@@ -282,6 +382,8 @@
   /* 划选完成 → 弹气泡；点别处 → 收起 */
   document.addEventListener('mouseup', function (e) {
     if (panel.contains(e.target)) return;
+    if (toc && toc.contains(e.target)) return;
+    if (tocLauncher && tocLauncher.contains(e.target)) return;
     if (bubble && bubble.contains(e.target)) return;
     if (popover && popover.contains(e.target)) return;
     setTimeout(showBubble, 0);
@@ -414,7 +516,8 @@
     }
   }
   function getSaved() { try { return vscodeApi.getState() || {}; } catch (e) { return {}; } }
-  function saveHeight(h) { if (!h) return; var s = getSaved(); s.panelHeight = h; try { vscodeApi.setState(s); } catch (e) {} }
+  function patchState(obj) { var s = getSaved(); for (var k in obj) { if (obj.hasOwnProperty(k)) s[k] = obj[k]; } try { vscodeApi.setState(s); } catch (e) {} }
+  function saveHeight(h) { if (!h) return; patchState({ panelHeight: h }); }
 
   /* ---------------- 拖动 ---------------- */
   function enableDrag() {
