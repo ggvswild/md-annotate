@@ -1,0 +1,36 @@
+package.json
+  f986361cf8f1c3ec 22-25
+media/icon.svg
+  f986361cf8f1c3ec 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "00763bddc39dc6bc666ccf1b868ef93589d13e18",
+  "prompts": {
+    "f986361cf8f1c3ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90eb4937-b1cf-4ba4-8586-7fbe65d84125",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "网易 Netease",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 2,
+      "accepted_lines": 27,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "media/icon.svg": {
+          "additions": 23,
+          "accepted_lines": 23
+        },
+        "package.json": {
+          "additions": 5,
+          "deletions": 2,
+          "accepted_lines": 4
+        }
+      }
+    }
+  }
+}
