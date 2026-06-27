@@ -67,7 +67,10 @@
     panel.querySelector('.wa-export').onclick = exportJson;
     panel.querySelector('.wa-copy').onclick = copyJson;
     panel.querySelector('.wa-clear').onclick = function () {
-      if (items.length && confirm('清空本文件全部批注？')) { items = []; persist(); render(); }
+      if (!items.length) return tip('没有批注可清空');
+      confirmBox('清空本文件全部批注？此操作不可撤销。', function () {
+        items = []; persist(); render(); tip('已清空全部批注');
+      });
     };
     panel.querySelector('.wa-min').onclick = minimize;
 
@@ -79,6 +82,8 @@
       vscodeApi.postMessage({ type: 'theme', theme: t });
     };
     enableDrag();
+    enableResize();
+    applySavedHeight();
 
     launcher = document.createElement('div');
     launcher.className = 'wa-launcher';
@@ -196,11 +201,18 @@
   /* ---------------- 捕获 ---------------- */
   function nearestBlock(node) {
     var el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
-    while (el && el !== doc && el !== document.body) {
-      if (el.hasAttribute && el.hasAttribute('data-source-line')) return el;
+    while (el && el !== document.body) {
+      if (el.nodeType === 1 && el.hasAttribute && el.hasAttribute('data-source-line')) return el;
+      if (el === doc) break;
       el = el.parentElement;
     }
-    return el === doc ? null : el;
+    return null;
+  }
+  // 选区起点最可靠：跨段时公共祖先会上浮到 #wa-doc（无行号），起点/终点仍落在具体块内
+  function blockForRange(range) {
+    return nearestBlock(range.startContainer) ||
+           nearestBlock(range.endContainer) ||
+           nearestBlock(range.commonAncestorContainer);
   }
   function blockRange(block) {
     if (!block || !block.getAttribute) return { start: null, end: null, text: '' };
@@ -215,7 +227,7 @@
     if (!sel || sel.isCollapsed || !sel.toString().trim()) return null;
     var range = sel.getRangeAt(0);
     if (!doc.contains(range.commonAncestorContainer)) return null;
-    var block = nearestBlock(range.commonAncestorContainer);
+    var block = blockForRange(range);
     var rng = blockRange(block);
     var ctx = block ? (block.textContent || '') : '';
     var s = sel.toString();
@@ -335,6 +347,66 @@
     tipTimer = setTimeout(hideTip, 2600);
   }
   function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } if (tipTimer) clearTimeout(tipTimer); }
+
+  /* VS Code webview 禁用 window.confirm，这里自绘确认框 */
+  function confirmBox(message, onYes) {
+    var mask = document.createElement('div');
+    mask.className = 'wa-mask';
+    mask.innerHTML =
+      '<div class="wa-dialog">' +
+        '<div class="wa-dialog-msg"></div>' +
+        '<div class="wa-row" style="margin:0">' +
+          '<div class="wa-btn wa-yes wa-primary">确定清空</div>' +
+          '<div class="wa-btn wa-no">取消</div>' +
+        '</div>' +
+      '</div>';
+    mask.querySelector('.wa-dialog-msg').textContent = message;
+    document.body.appendChild(mask);
+    function close() { mask.remove(); }
+    mask.querySelector('.wa-yes').onclick = function () { close(); onYes(); };
+    mask.querySelector('.wa-no').onclick = close;
+    mask.addEventListener('mousedown', function (e) { if (e.target === mask) close(); });
+  }
+
+  /* ---------------- 上边缘调高 ---------------- */
+  var MIN_H = 180;
+  function enableResize() {
+    var handle = document.createElement('div');
+    handle.className = 'wa-resize';
+    handle.title = '拖拽调整高度';
+    panel.insertBefore(handle, panel.firstChild);
+    var resizing = false, bottomY = 0;
+    handle.addEventListener('mousedown', function (e) {
+      resizing = true;
+      var r = panel.getBoundingClientRect();
+      bottomY = r.bottom;
+      panel.style.bottom = 'auto';
+      panel.style.maxHeight = 'none';
+      document.body.style.userSelect = 'none';
+      e.preventDefault(); e.stopPropagation();
+    });
+    document.addEventListener('mousemove', function (e) {
+      if (!resizing) return;
+      var top = Math.min(Math.max(8, e.clientY), bottomY - MIN_H);
+      panel.style.top = top + 'px';
+      panel.style.height = (bottomY - top) + 'px';
+    });
+    document.addEventListener('mouseup', function () {
+      if (!resizing) return;
+      resizing = false;
+      document.body.style.userSelect = '';
+      saveHeight(parseInt(panel.style.height, 10) || null);
+    });
+  }
+  function applySavedHeight() {
+    var s = getSaved();
+    if (s && s.panelHeight) {
+      var h = Math.min(s.panelHeight, window.innerHeight - 24);
+      if (h >= MIN_H) { panel.style.height = h + 'px'; panel.style.maxHeight = 'none'; }
+    }
+  }
+  function getSaved() { try { return vscodeApi.getState() || {}; } catch (e) { return {}; } }
+  function saveHeight(h) { if (!h) return; var s = getSaved(); s.panelHeight = h; try { vscodeApi.setState(s); } catch (e) {} }
 
   /* ---------------- 拖动 ---------------- */
   function enableDrag() {
