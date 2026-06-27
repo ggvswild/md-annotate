@@ -1,0 +1,65 @@
+{
+  "name": "md-annotate",
+  "displayName": "Markdown 批注预览 · MD Annotate",
+  "description": "在 Markdown 预览上划选文字/段落写批注，导出结构化 JSON 交给 AI 修改源文件。",
+  "version": "0.1.0",
+  "publisher": "netease-local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      {
+        "command": "mdAnnotate.openPreview",
+        "title": "Markdown 批注预览：打开",
+        "category": "MD Annotate",
+        "icon": "$(comment-discussion)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mdAnnotate.openPreview",
+          "when": "resourceLangId == markdown",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "mdAnnotate.openPreview",
+          "when": "resourceLangId == markdown"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "mdAnnotate.openPreview",
+        "key": "ctrl+shift+m a",
+        "mac": "cmd+shift+m a",
+        "when": "resourceLangId == markdown && editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.js && tsc --noEmit",
+    "watch": "node esbuild.js --watch",
+    "package": "npx --yes @vscode/vsce package --no-dependencies -o md-annotate.vsix",
+    "vscode:prepublish": "node esbuild.js"
+  },
+  "dependencies": {
+    "markdown-it": "^14.1.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.84.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.4.5"
+  }
+}

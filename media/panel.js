@@ -1,0 +1,362 @@
+/*
+ * MD Annotate · webview client
+ * 交互：划选文字 → 选区旁浮出「💬 评论」气泡 → 点击就地弹评论框。
+ * 按住 Alt → 段落高亮，Alt+点击 → 就地评论整段（无需模式开关）。
+ * 右下角面板 = 批注清单 + 样式切换 + 导出；可最小化为角落圆球。
+ */
+(function () {
+  'use strict';
+
+  var vscodeApi = acquireVsCodeApi();
+  var BOOT = window.__WA_BOOTSTRAP__ || { fileName: 'document', filePath: '', source: '', theme: 'github', annotations: [] };
+  var SOURCE_LINES = String(BOOT.source || '').split(/\r?\n/);
+  var TYPES = { comment: '评论', replacement: '替换', deletion: '删除' };
+  var THEMES = [
+    ['vscode', '跟随编辑器'],
+    ['github', 'GitHub 浅色'],
+    ['sepia', 'Sepia 护眼'],
+    ['dark', '极简暗色'],
+    ['notion', 'Notion 宽松']
+  ];
+
+  var doc = document.getElementById('wa-doc');
+  var items = Array.isArray(BOOT.annotations) ? BOOT.annotations.slice() : [];
+  var altDown = false;
+  var hover = null;
+  var panel, listEl, cntEl, launcher, badgeEl;
+  var bubble = null, popover = null, lastRect = null;
+
+  build();
+  render();
+  tip('划选文字即可评论（选区旁出现 💬）；按住 Alt 点击评论整段');
+
+  /* ---------------- 面板 ---------------- */
+  function build() {
+    panel = document.createElement('div');
+    panel.className = 'wa-panel wa-open';
+    panel.innerHTML =
+      '<div class="wa-hd"><b>🔖 批注</b><span class="wa-cnt"></span><span class="wa-min" title="最小化">—</span></div>' +
+      '<div class="wa-bd">' +
+        '<div class="wa-theme-row">' +
+          '<span>🎨 样式</span>' +
+          '<select class="wa-theme">' +
+            THEMES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('') +
+          '</select>' +
+        '</div>' +
+        '<div class="wa-hint">划选文字弹 💬 评论 · 按住 <b>Alt</b> 点击评论整段</div>' +
+        '<div class="wa-row">' +
+          '<div class="wa-btn wa-text">✍️ 评论当前选区</div>' +
+        '</div>' +
+        '<ul class="wa-list"></ul>' +
+      '</div>' +
+      '<div class="wa-ft">' +
+        '<div class="wa-btn wa-export">⬇ 导出 JSON</div>' +
+        '<div class="wa-btn wa-copy">📋 复制</div>' +
+        '<div class="wa-btn wa-clear">🗑 清空</div>' +
+      '</div>';
+    document.body.appendChild(panel);
+
+    listEl = panel.querySelector('.wa-list');
+    cntEl = panel.querySelector('.wa-cnt');
+
+    panel.querySelector('.wa-text').onclick = function () {
+      var p = captureSelection();
+      if (!p) return tip('请先在文档里用鼠标选中一段文字');
+      openForm(p, selectionRect());
+    };
+    panel.querySelector('.wa-export').onclick = exportJson;
+    panel.querySelector('.wa-copy').onclick = copyJson;
+    panel.querySelector('.wa-clear').onclick = function () {
+      if (items.length && confirm('清空本文件全部批注？')) { items = []; persist(); render(); }
+    };
+    panel.querySelector('.wa-min').onclick = minimize;
+
+    var themeSel = panel.querySelector('.wa-theme');
+    themeSel.value = BOOT.theme || 'github';
+    themeSel.onchange = function () {
+      var t = themeSel.value;
+      document.body.className = 'theme-' + t;
+      vscodeApi.postMessage({ type: 'theme', theme: t });
+    };
+    enableDrag();
+
+    launcher = document.createElement('div');
+    launcher.className = 'wa-launcher';
+    launcher.title = '展开批注面板';
+    launcher.innerHTML = '💬<span class="wa-badge"></span>';
+    launcher.onclick = maximize;
+    document.body.appendChild(launcher);
+    badgeEl = launcher.querySelector('.wa-badge');
+  }
+
+  function minimize() {
+    panel.classList.remove('wa-open');
+    launcher.classList.add('wa-show');
+    clearHover();
+  }
+  function maximize() {
+    panel.classList.add('wa-open');
+    launcher.classList.remove('wa-show');
+  }
+
+  /* ---------------- 选区气泡 ---------------- */
+  function makeBubble() {
+    bubble = document.createElement('div');
+    bubble.className = 'wa-bubble';
+    bubble.textContent = '💬 评论';
+    bubble.addEventListener('mousedown', function (e) { e.preventDefault(); }); // 保住选区
+    bubble.onclick = function () {
+      var p = captureSelection();
+      var rect = lastRect;
+      hideBubble();
+      if (p) openForm(p, rect);
+    };
+    document.body.appendChild(bubble);
+  }
+  function showBubble() {
+    if (altDown || popover) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) return hideBubble();
+    var range = sel.getRangeAt(0);
+    if (!doc.contains(range.commonAncestorContainer)) return hideBubble();
+    var rects = range.getClientRects();
+    var r = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+    lastRect = r;
+    if (!bubble) makeBubble();
+    bubble.style.display = 'block';
+    var left = r.right + 4, top = r.bottom + 4;
+    if (left + 84 > window.innerWidth) left = window.innerWidth - 88;
+    if (top + 34 > window.innerHeight) top = r.top - 34;
+    bubble.style.left = Math.max(4, left) + 'px';
+    bubble.style.top = Math.max(4, top) + 'px';
+  }
+  function hideBubble() { if (bubble) bubble.style.display = 'none'; }
+  function selectionRect() {
+    try {
+      var range = window.getSelection().getRangeAt(0);
+      var rects = range.getClientRects();
+      return rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+    } catch (e) { return null; }
+  }
+
+  /* ---------------- 就地评论框 ---------------- */
+  function openForm(payload, rect) {
+    closePopover();
+    hideBubble();
+    popover = document.createElement('div');
+    popover.className = 'wa-popover wa-show';
+    popover.innerHTML =
+      '<div class="wa-form">' +
+        '<div class="wa-sel"></div>' +
+        '<textarea placeholder="写下修改意见，例如：这句太啰嗦压缩成一句 / 数据换成 Q2 / 这段删掉…"></textarea>' +
+        '<div class="wa-types">' +
+          '<label><input type="radio" name="wa-t" value="comment" checked>评论</label>' +
+          '<label><input type="radio" name="wa-t" value="replacement">替换</label>' +
+          '<label><input type="radio" name="wa-t" value="deletion">删除</label>' +
+        '</div>' +
+        '<div class="wa-row" style="margin:0">' +
+          '<div class="wa-btn wa-add wa-primary">添加批注</div>' +
+          '<div class="wa-btn wa-cancel">取消</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(popover);
+    popover.querySelector('.wa-sel').textContent =
+      '选中(' + (payload.mode === 'block' ? '段落' : '文字') + ' · 第' +
+      (payload.sourceLineStart || '?') + '行)：' + (payload.selectedText || '');
+    positionPopover(rect);
+
+    var ta = popover.querySelector('textarea');
+    ta.focus();
+    popover.querySelector('.wa-add').onclick = function () {
+      var t = popover.querySelector('input[name=wa-t]:checked').value;
+      payload.type = t;
+      payload.comment = ta.value.trim();
+      if (t === 'replacement') { payload.replacementText = payload.selectedText; }
+      if (t !== 'deletion' && !payload.comment) { ta.focus(); ta.classList.add('wa-err'); return; }
+      items.push(payload);
+      persist();
+      render();
+      closePopover();
+    };
+    popover.querySelector('.wa-cancel').onclick = closePopover;
+  }
+  function positionPopover(rect) {
+    var pad = 8, w = popover.offsetWidth, h = popover.offsetHeight;
+    var left = rect ? rect.left : (window.innerWidth - w) / 2;
+    var top = rect ? rect.bottom + 8 : (window.innerHeight - h) / 2;
+    if (left + w > window.innerWidth - pad) left = window.innerWidth - w - pad;
+    if (left < pad) left = pad;
+    if (top + h > window.innerHeight - pad) top = rect ? Math.max(pad, rect.top - h - 8) : pad;
+    if (top < pad) top = pad;
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+  }
+  function closePopover() { if (popover) { popover.remove(); popover = null; } }
+
+  /* ---------------- 捕获 ---------------- */
+  function nearestBlock(node) {
+    var el = node && node.nodeType === 1 ? node : (node ? node.parentElement : null);
+    while (el && el !== doc && el !== document.body) {
+      if (el.hasAttribute && el.hasAttribute('data-source-line')) return el;
+      el = el.parentElement;
+    }
+    return el === doc ? null : el;
+  }
+  function blockRange(block) {
+    if (!block || !block.getAttribute) return { start: null, end: null, text: '' };
+    var start = parseInt(block.getAttribute('data-source-line'), 10);
+    var end = parseInt(block.getAttribute('data-source-end'), 10);
+    if (!isFinite(start)) return { start: null, end: null, text: '' };
+    if (!isFinite(end) || end < start) end = start;
+    return { start: start, end: end, text: SOURCE_LINES.slice(start - 1, end).join('\n') };
+  }
+  function captureSelection() {
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) return null;
+    var range = sel.getRangeAt(0);
+    if (!doc.contains(range.commonAncestorContainer)) return null;
+    var block = nearestBlock(range.commonAncestorContainer);
+    var rng = blockRange(block);
+    var ctx = block ? (block.textContent || '') : '';
+    var s = sel.toString();
+    var at = ctx.indexOf(s);
+    return {
+      id: uid(), mode: 'text', selectedText: clean(s).slice(0, 400), comment: '',
+      sourceLineStart: rng.start, sourceLineEnd: rng.end, sourceText: rng.text,
+      contextPrefix: at > -1 ? clean(ctx.slice(Math.max(0, at - 40), at)) : '',
+      contextSuffix: at > -1 ? clean(ctx.slice(at + s.length, at + s.length + 40)) : ''
+    };
+  }
+  function captureBlock(el) {
+    var block = nearestBlock(el) || el;
+    var rng = blockRange(block);
+    return {
+      id: uid(), mode: 'block', selectedText: clean(block.textContent || '').slice(0, 400), comment: '',
+      sourceLineStart: rng.start, sourceLineEnd: rng.end, sourceText: rng.text,
+      contextPrefix: '', contextSuffix: ''
+    };
+  }
+
+  /* ---------------- Alt 选段（常驻，无模式开关） ---------------- */
+  function clearHover() { if (hover) { hover.classList.remove('wa-hl'); hover = null; } }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Alt') { altDown = true; hideBubble(); }
+    if (e.key === 'Escape') { hideBubble(); closePopover(); clearHover(); }
+  });
+  document.addEventListener('keyup', function (e) {
+    if (e.key === 'Alt') { altDown = false; clearHover(); }
+  });
+  window.addEventListener('blur', function () { altDown = false; clearHover(); });
+
+  document.addEventListener('mousemove', function (e) {
+    if (!altDown) return;
+    var el = e.target;
+    if (panel.contains(el) || (popover && popover.contains(el)) || !doc.contains(el)) { clearHover(); return; }
+    var block = nearestBlock(el) || el;
+    if (block === hover) return;
+    clearHover(); hover = block; if (block && block.classList) block.classList.add('wa-hl');
+  }, true);
+
+  document.addEventListener('click', function (e) {
+    if (!e.altKey) return;
+    if (panel.contains(e.target) || (popover && popover.contains(e.target)) || !doc.contains(e.target)) return;
+    e.preventDefault(); e.stopPropagation();
+    var block = nearestBlock(e.target) || e.target;
+    clearHover();
+    openForm(captureBlock(block), { left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY });
+  }, true);
+
+  /* 划选完成 → 弹气泡；点别处 → 收起 */
+  document.addEventListener('mouseup', function (e) {
+    if (panel.contains(e.target)) return;
+    if (bubble && bubble.contains(e.target)) return;
+    if (popover && popover.contains(e.target)) return;
+    setTimeout(showBubble, 0);
+  });
+  document.addEventListener('mousedown', function (e) {
+    if (bubble && bubble.contains(e.target)) return;
+    hideBubble();
+    if (popover && !popover.contains(e.target)) closePopover();
+  });
+  document.addEventListener('scroll', function () { hideBubble(); }, true);
+
+  /* ---------------- 列表 ---------------- */
+  function render() {
+    var n = items.length;
+    cntEl.textContent = n ? '(' + n + ')' : '';
+    if (badgeEl) { badgeEl.textContent = n ? String(n) : ''; badgeEl.style.display = n ? 'block' : 'none'; }
+    if (!n) { listEl.innerHTML = '<div class="wa-empty">还没有批注</div>'; return; }
+    listEl.innerHTML = '';
+    items.forEach(function (it, i) {
+      var li = document.createElement('li');
+      li.className = 'wa-li';
+      li.innerHTML =
+        '<span class="wa-del" data-i="' + i + '" title="删除">✕</span>' +
+        '<span class="wa-tag ' + it.type + '">' + (TYPES[it.type] || it.type) + '</span>' +
+        '<b>#' + (i + 1) + '</b>' +
+        '<span class="wa-line">L' + (it.sourceLineStart || '?') + '</span>' +
+        '<div class="wa-snip">' + esc(it.selectedText) + '</div>' +
+        (it.comment ? '<div class="wa-cmt">' + esc(it.comment) + '</div>' : '') +
+        '<span class="wa-goto" data-i="' + i + '">↪ 定位源码</span>';
+      li.onclick = function (e) {
+        if (e.target.classList.contains('wa-del')) { items.splice(i, 1); persist(); render(); return; }
+        if (e.target.classList.contains('wa-goto')) { vscodeApi.postMessage({ type: 'reveal', line: it.sourceLineStart }); return; }
+        flash(it);
+      };
+      listEl.insertBefore(li, listEl.firstChild); // 新评论置顶（数据数组仍按时间顺序）
+    });
+  }
+  function flash(it) {
+    if (!it.sourceLineStart) return;
+    var el = doc.querySelector('[data-source-line="' + it.sourceLineStart + '"]');
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('wa-flash');
+    setTimeout(function () { el.classList.remove('wa-flash'); }, 1200);
+  }
+
+  /* ---------------- 导出 / 复制 / 持久化 ---------------- */
+  function payloadText() { return JSON.stringify({ file: BOOT.filePath, count: items.length, annotations: items }, null, 2); }
+  function exportJson() { if (!items.length) return tip('没有批注可导出'); vscodeApi.postMessage({ type: 'save', annotations: items }); }
+  function copyJson() { if (!items.length) return tip('没有批注可复制'); vscodeApi.postMessage({ type: 'copy', text: payloadText() }); }
+  function persist() { vscodeApi.postMessage({ type: 'persist', annotations: items }); }
+
+  /* ---------------- 工具 ---------------- */
+  function clean(s) { return String(s).replace(/\s+/g, ' ').trim(); }
+  function uid() { return 'a' + (items.length + 1) + '_' + Math.floor(performance.now()); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+
+  var tipEl = null, tipTimer = null;
+  function tip(msg) {
+    hideTip();
+    tipEl = document.createElement('div'); tipEl.className = 'wa-tip'; tipEl.textContent = msg;
+    document.body.appendChild(tipEl);
+    tipTimer = setTimeout(hideTip, 2600);
+  }
+  function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } if (tipTimer) clearTimeout(tipTimer); }
+
+  /* ---------------- 拖动 ---------------- */
+  function enableDrag() {
+    var hd = panel.querySelector('.wa-hd'), sx, sy, ox, oy, on = false;
+    hd.addEventListener('mousedown', function (e) {
+      if (e.target.classList.contains('wa-min')) return;
+      on = true; sx = e.clientX; sy = e.clientY;
+      var r = panel.getBoundingClientRect(); ox = r.left; oy = r.top;
+      panel.style.right = 'auto'; panel.style.bottom = 'auto'; panel.style.left = ox + 'px'; panel.style.top = oy + 'px';
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', function (e) {
+      if (!on) return;
+      panel.style.left = (ox + e.clientX - sx) + 'px';
+      panel.style.top = (oy + e.clientY - sy) + 'px';
+    });
+    document.addEventListener('mouseup', function () { on = false; });
+  }
+
+  /* ---------------- host 消息 ---------------- */
+  window.addEventListener('message', function (e) {
+    var msg = e.data;
+    if (msg && msg.type === 'info') tip(msg.message);
+  });
+})();
