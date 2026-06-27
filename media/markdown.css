@@ -102,7 +102,7 @@ body {
 .markdown-body h2 { font-size: 1.5em; border-bottom: 1px solid var(--md-border); padding-bottom: .3em; }
 .markdown-body h3 { font-size: 1.25em; }
 .markdown-body p { margin: .65em 0; }
-.markdown-body a { color: var(--md-link); text-decoration: none; }
+.markdown-body a { color: var(--md-link); text-decoration: none; -webkit-user-drag: none; user-select: text; }
 .markdown-body a:hover { text-decoration: underline; }
 .markdown-body ul, .markdown-body ol { padding-left: 1.6em; margin: .5em 0; }
 .markdown-body li { margin: .25em 0; }
