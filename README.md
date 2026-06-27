@@ -16,7 +16,7 @@
 
 ## 输出
 
-导出会在 md 同目录生成 `<文件名>.annotations.json`：
+每次导出都会在 md 同目录**新建**一个带时间戳的文件（不覆盖、可累积）：`<文件名>-<yyyyMMdd-HHmmss>.annotations.json`，例如 `XCREW-20260627-172545.annotations.json`。内容：
 
 ```json
 {
