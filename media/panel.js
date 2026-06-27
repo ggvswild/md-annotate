@@ -254,7 +254,8 @@
   function hideBubble() { if (bubble) bubble.style.display = 'none'; }
 
   /* ---------------- 就地评论框 ---------------- */
-  function openForm(payload, rect) {
+  function openForm(payload, rect, editIndex) {
+    var editing = (editIndex != null);
     closePopover();
     hideBubble();
     popover = document.createElement('div');
@@ -269,25 +270,30 @@
           '<label><input type="radio" name="wa-t" value="deletion">删除</label>' +
         '</div>' +
         '<div class="wa-row" style="margin:0">' +
-          '<div class="wa-btn wa-add wa-primary">添加批注</div>' +
+          '<div class="wa-btn wa-add wa-primary">' + (editing ? '保存修改' : '添加批注') + '</div>' +
           '<div class="wa-btn wa-cancel">取消</div>' +
         '</div>' +
       '</div>';
     document.body.appendChild(popover);
     popover.querySelector('.wa-sel').textContent =
-      '选中(' + (payload.mode === 'block' ? '段落' : '文字') + ' · 第' +
+      (editing ? '编辑 #' + (editIndex + 1) + '(' : '选中(') + (payload.mode === 'block' ? '段落' : '文字') + ' · 第' +
       (payload.sourceLineStart || '?') + '行)：' + (payload.selectedText || '');
+    if (payload.type) {
+      var r = popover.querySelector('input[name=wa-t][value="' + payload.type + '"]');
+      if (r) r.checked = true;
+    }
     positionPopover(rect);
 
     var ta = popover.querySelector('textarea');
+    ta.value = payload.comment || '';
     ta.focus();
     popover.querySelector('.wa-add').onclick = function () {
       var t = popover.querySelector('input[name=wa-t]:checked').value;
       payload.type = t;
       payload.comment = ta.value.trim();
-      if (t === 'replacement') { payload.replacementText = payload.selectedText; }
+      if (t === 'replacement' && !payload.replacementText) { payload.replacementText = payload.selectedText; }
       if (t !== 'deletion' && !payload.comment) { ta.focus(); ta.classList.add('wa-err'); return; }
-      items.push(payload);
+      if (!editing) { items.push(payload); }
       persist();
       render();
       closePopover();
@@ -422,10 +428,16 @@
         '<span class="wa-line">L' + (it.sourceLineStart || '?') + '</span>' +
         '<div class="wa-snip">' + esc(it.selectedText) + '</div>' +
         (it.comment ? '<div class="wa-cmt">' + esc(it.comment) + '</div>' : '') +
+        '<span class="wa-edit" data-i="' + i + '">✎ 编辑</span>' +
         '<span class="wa-goto" data-i="' + i + '">↪ 定位源码</span>' +
         '<span class="wa-time">' + fmtTime(it.createdAt) + '</span>';
       li.onclick = function (e) {
         if (e.target.classList.contains('wa-del')) { items.splice(i, 1); persist(); render(); return; }
+        if (e.target.classList.contains('wa-edit')) {
+          e.stopPropagation();
+          openForm(it, { left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, i);
+          return;
+        }
         if (e.target.classList.contains('wa-goto')) { vscodeApi.postMessage({ type: 'reveal', line: it.sourceLineStart }); return; }
         focusAnnotation(it);
       };

@@ -110,6 +110,8 @@ body.wa-ui-light {
 .wa-li .wa-cmt { word-break: break-word; }
 .wa-li .wa-del { position: absolute; top: 6px; right: 8px; opacity: .5; }
 .wa-li .wa-del:hover { opacity: 1; color: var(--wa-error); }
+.wa-li .wa-edit { display: inline-block; margin-top: 6px; margin-right: 12px; font-size: 11px; opacity: .75; cursor: pointer; color: var(--wa-link); }
+.wa-li .wa-edit:hover { opacity: 1; text-decoration: underline; }
 .wa-li .wa-goto { display: inline-block; margin-top: 6px; font-size: 11px; opacity: .75; color: var(--wa-link); }
 .wa-li .wa-goto:hover { opacity: 1; text-decoration: underline; }
 .wa-li .wa-time { position: absolute; right: 9px; bottom: 8px; font-size: 10px; opacity: .45; font-variant-numeric: tabular-nums; }
