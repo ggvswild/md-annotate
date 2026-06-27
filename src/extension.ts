@@ -27,6 +27,9 @@ interface Annotation {
 /** Available markdown preview themes (must match body.theme-* classes in markdown.css). */
 const THEMES = ['vscode', 'github', 'sepia', 'dark', 'notion'];
 
+/** UI preference keys allowed to be persisted from the webview. */
+const PREF_KEYS = ['hlStyle', 'uiMode', 'panelHeight', 'tocOpen'];
+
 const md = createMarkdownRenderer();
 
 // One live panel per source file path.
@@ -158,6 +161,18 @@ class AnnotatePanel {
     return THEMES.includes(theme) ? theme : 'github';
   }
 
+  /** UI preferences persisted in globalState so they survive reopening the preview. */
+  private getPrefs(): Record<string, unknown> {
+    return this.context.globalState.get<Record<string, unknown>>('mdAnnotate.prefs', {});
+  }
+  private async setPref(key: string, value: unknown): Promise<void> {
+    if (!PREF_KEYS.includes(key)) {
+      return;
+    }
+    const prefs = { ...this.getPrefs(), [key]: value };
+    await this.context.globalState.update('mdAnnotate.prefs', prefs);
+  }
+
   private async render(): Promise<void> {
     let source: string;
     try {
@@ -190,6 +205,7 @@ class AnnotatePanel {
       filePath: workspaceRelative(this.target),
       source,
       theme,
+      prefs: this.getPrefs(),
       annotations: this.loadSavedAnnotations()
     };
 
@@ -225,6 +241,11 @@ class AnnotatePanel {
       case 'theme':
         if (typeof msg.theme === 'string' && THEMES.includes(msg.theme)) {
           await this.context.globalState.update('mdAnnotate.theme', msg.theme);
+        }
+        return;
+      case 'pref':
+        if (typeof msg.key === 'string') {
+          await this.setPref(msg.key, msg.value);
         }
         return;
       case 'copy':

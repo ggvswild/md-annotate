@@ -1,107 +1,137 @@
-/* MD Annotate · annotation panel — themed via VS Code webview variables */
+/* MD Annotate · plugin chrome (panel + outline + popovers)
+ * Colors come from --wa-* variables so the whole UI can switch
+ * dark / light / follow-editor independently of the markdown content theme. */
+
+/* follow VS Code editor theme (default) */
+body.wa-ui-auto {
+  --wa-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background, #252526));
+  --wa-bg-2: var(--vscode-titleBar-activeBackground, #2a2d2e);
+  --wa-fg: var(--vscode-foreground, #cccccc);
+  --wa-fg-2: var(--vscode-titleBar-activeForeground, var(--vscode-foreground, #cccccc));
+  --wa-border: var(--vscode-editorWidget-border, var(--vscode-panel-border, #444));
+  --wa-btn-bg: var(--vscode-button-secondaryBackground, #3a3d41);
+  --wa-btn-bg-hover: var(--vscode-button-secondaryHoverBackground, #45494e);
+  --wa-btn-fg: var(--vscode-button-secondaryForeground, var(--vscode-foreground, #ccc));
+  --wa-accent: var(--vscode-button-background, #0e639c);
+  --wa-accent-fg: var(--vscode-button-foreground, #fff);
+  --wa-accent-hover: var(--vscode-button-hoverBackground, #1177bb);
+  --wa-input-bg: var(--vscode-input-background, #1e1e1e);
+  --wa-input-fg: var(--vscode-input-foreground, var(--vscode-foreground, #ccc));
+  --wa-input-border: var(--vscode-input-border, #555);
+  --wa-hover: var(--vscode-list-hoverBackground, rgba(255, 255, 255, .06));
+  --wa-link: var(--vscode-textLink-foreground, #3794ff);
+  --wa-error: var(--vscode-errorForeground, #f48771);
+  --wa-badge-bg: var(--vscode-activityBarBadge-background, #f53f3f);
+  --wa-badge-fg: var(--vscode-activityBarBadge-foreground, #fff);
+}
+/* fixed dark */
+body.wa-ui-dark {
+  --wa-bg: #252526; --wa-bg-2: #2d2d30; --wa-fg: #cccccc; --wa-fg-2: #e7e7e7;
+  --wa-border: #3c3c3c; --wa-btn-bg: #3a3d41; --wa-btn-bg-hover: #45494e; --wa-btn-fg: #e7e7e7;
+  --wa-accent: #0e639c; --wa-accent-fg: #ffffff; --wa-accent-hover: #1177bb;
+  --wa-input-bg: #1e1e1e; --wa-input-fg: #e7e7e7; --wa-input-border: #3c3c3c;
+  --wa-hover: rgba(255, 255, 255, .06); --wa-link: #3794ff; --wa-error: #f48771;
+  --wa-badge-bg: #f53f3f; --wa-badge-fg: #fff;
+}
+/* fixed light */
+body.wa-ui-light {
+  --wa-bg: #ffffff; --wa-bg-2: #f3f3f3; --wa-fg: #1f2328; --wa-fg-2: #1f2328;
+  --wa-border: #d0d7de; --wa-btn-bg: #f3f4f6; --wa-btn-bg-hover: #e7e9ec; --wa-btn-fg: #1f2328;
+  --wa-accent: #0969da; --wa-accent-fg: #ffffff; --wa-accent-hover: #0860ca;
+  --wa-input-bg: #ffffff; --wa-input-fg: #1f2328; --wa-input-border: #d0d7de;
+  --wa-hover: rgba(0, 0, 0, .05); --wa-link: #0969da; --wa-error: #cf222e;
+  --wa-badge-bg: #d1242f; --wa-badge-fg: #fff;
+}
+
 .wa-panel {
   position: fixed; right: 16px; bottom: 16px; z-index: 2147483646;
   width: 340px; max-height: 74vh; display: none; flex-direction: column;
   font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif);
-  color: var(--vscode-foreground);
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #444));
+  color: var(--wa-fg); background: var(--wa-bg);
+  border: 1px solid var(--wa-border);
   border-radius: 10px; box-shadow: 0 8px 32px rgba(0, 0, 0, .3); overflow: hidden;
 }
 .wa-panel.wa-open { display: flex; }
-.wa-resize {
-  position: absolute; top: 0; left: 0; right: 0; height: 7px; z-index: 5; cursor: ns-resize;
-}
+.wa-resize { position: absolute; top: 0; left: 0; right: 0; height: 7px; z-index: 5; cursor: ns-resize; }
 .wa-resize::after {
   content: ''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
   width: 40px; height: 3px; border-radius: 2px; background: transparent; transition: background .12s ease;
 }
-.wa-resize:hover::after { background: var(--vscode-focusBorder, #0e639c); }
+.wa-resize:hover::after { background: var(--wa-accent); }
 .wa-hd {
   display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: move; user-select: none;
-  background: var(--vscode-titleBar-activeBackground, #2a2d2e);
-  color: var(--vscode-titleBar-activeForeground, var(--vscode-foreground));
+  background: var(--wa-bg-2); color: var(--wa-fg-2);
 }
 .wa-hd b { flex: 1; font-size: 13px; }
 .wa-hd .wa-cnt { opacity: .8; font-size: 12px; }
 .wa-hd .wa-min { cursor: pointer; opacity: .7; font-size: 18px; line-height: 1; font-weight: 700; padding: 0 2px; }
 .wa-hd .wa-min:hover { opacity: 1; }
 .wa-bd { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 10px 12px; }
-.wa-theme-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12px; opacity: .9; }
-.wa-theme-row span { flex: 0 0 auto; }
-.wa-theme {
-  flex: 1; padding: 5px 6px; border-radius: 6px; font: inherit; font-size: 12px;
-  border: 1px solid var(--vscode-dropdown-border, #555);
-  background: var(--vscode-dropdown-background, #2a2d2e);
-  color: var(--vscode-dropdown-foreground, var(--vscode-foreground));
+
+/* control rows (theme / highlight / ui) */
+.wa-ctrl-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.wa-ctrl { flex: 1; display: flex; align-items: center; gap: 6px; font-size: 12px; min-width: 0; }
+.wa-ctrl > span { flex: 0 0 auto; opacity: .9; white-space: nowrap; }
+.wa-ctrl select {
+  flex: 1; min-width: 0; padding: 5px 6px; border-radius: 6px; font: inherit; font-size: 12px;
+  border: 1px solid var(--wa-input-border); background: var(--wa-input-bg); color: var(--wa-fg);
 }
 .wa-hint { font-size: 11px; opacity: .65; margin-bottom: 8px; line-height: 1.5; }
 .wa-hint b { opacity: .9; }
 .wa-row { display: flex; gap: 6px; margin-bottom: 8px; }
 .wa-btn {
   flex: 1; padding: 7px 8px; border-radius: 7px; cursor: pointer; font-size: 12px; text-align: center;
-  border: 1px solid var(--vscode-button-border, transparent);
-  background: var(--vscode-button-secondaryBackground, #3a3d41);
-  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  border: 1px solid var(--wa-border); background: var(--wa-btn-bg); color: var(--wa-btn-fg);
 }
-.wa-btn:hover { background: var(--vscode-button-secondaryHoverBackground, #45494e); }
-.wa-btn.on, .wa-btn.wa-primary {
-  background: var(--vscode-button-background, #0e639c);
-  color: var(--vscode-button-foreground, #fff);
-  border-color: var(--vscode-button-background, #0e639c);
-}
-.wa-btn.wa-primary:hover { background: var(--vscode-button-hoverBackground, #1177bb); }
+.wa-btn:hover { background: var(--wa-btn-bg-hover); }
+.wa-btn.on, .wa-btn.wa-primary { background: var(--wa-accent); color: var(--wa-accent-fg); border-color: var(--wa-accent); }
+.wa-btn.wa-primary:hover { background: var(--wa-accent-hover); }
 .wa-form {
-  border: 1px dashed var(--vscode-input-border, #555); border-radius: 8px; padding: 8px; margin-bottom: 10px;
-  background: var(--vscode-input-background, rgba(255, 255, 255, .03));
+  border: 1px dashed var(--wa-input-border); border-radius: 8px; padding: 8px; margin-bottom: 10px;
+  background: var(--wa-input-bg);
 }
 .wa-form .wa-sel { font-size: 12px; opacity: .75; word-break: break-all; margin-bottom: 6px; max-height: 60px; overflow: auto; }
 .wa-form textarea {
   width: 100%; box-sizing: border-box; min-height: 56px; resize: vertical;
-  border: 1px solid var(--vscode-input-border, #555); border-radius: 6px; padding: 6px;
-  background: var(--vscode-input-background, #1e1e1e); color: var(--vscode-input-foreground, var(--vscode-foreground));
-  font: inherit;
+  border: 1px solid var(--wa-input-border); border-radius: 6px; padding: 6px;
+  background: var(--wa-input-bg); color: var(--wa-input-fg); font: inherit;
 }
-.wa-form textarea.wa-err { border-color: var(--vscode-inputValidation-errorBorder, #be1100); }
+.wa-form textarea.wa-err { border-color: var(--wa-error); }
 .wa-form .wa-types { display: flex; gap: 12px; margin: 6px 0; font-size: 12px; }
 .wa-form label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
 .wa-list { list-style: none; margin: 0; padding: 0; flex: 1; min-height: 0; overflow-y: auto; }
-.wa-li {
-  border: 1px solid var(--vscode-editorWidget-border, #444); border-radius: 8px;
-  padding: 8px; margin-bottom: 8px; cursor: pointer; position: relative;
-}
-.wa-li:hover { border-color: var(--vscode-focusBorder, #0e639c); }
+.wa-li { border: 1px solid var(--wa-border); border-radius: 8px; padding: 8px; margin-bottom: 8px; cursor: pointer; position: relative; }
+.wa-li:hover { border-color: var(--wa-accent); }
 .wa-li .wa-tag { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 4px; margin-right: 6px;
-  background: rgba(14, 99, 156, .25); color: var(--vscode-foreground); }
+  background: rgba(14, 99, 156, .25); color: var(--wa-fg); }
 .wa-li .wa-tag.replacement { background: rgba(255, 125, 0, .22); }
 .wa-li .wa-tag.deletion { background: rgba(245, 63, 63, .22); }
 .wa-li .wa-line { font-size: 11px; opacity: .6; }
 .wa-li .wa-snip { opacity: .7; font-size: 12px; margin: 4px 0; word-break: break-all; max-height: 48px; overflow: auto; }
 .wa-li .wa-cmt { word-break: break-word; }
 .wa-li .wa-del { position: absolute; top: 6px; right: 8px; opacity: .5; }
-.wa-li .wa-del:hover { opacity: 1; color: var(--vscode-errorForeground, #f48771); }
-.wa-li .wa-goto { display: inline-block; margin-top: 6px; font-size: 11px; opacity: .75; color: var(--vscode-textLink-foreground, #3794ff); }
+.wa-li .wa-del:hover { opacity: 1; color: var(--wa-error); }
+.wa-li .wa-goto { display: inline-block; margin-top: 6px; font-size: 11px; opacity: .75; color: var(--wa-link); }
 .wa-li .wa-goto:hover { opacity: 1; text-decoration: underline; }
 .wa-li .wa-time { position: absolute; right: 9px; bottom: 8px; font-size: 10px; opacity: .45; font-variant-numeric: tabular-nums; }
-.wa-ft { display: flex; gap: 6px; padding: 9px 12px; border-top: 1px solid var(--vscode-editorWidget-border, #444); flex-wrap: wrap; }
+.wa-ft { display: flex; gap: 6px; padding: 9px 12px; border-top: 1px solid var(--wa-border); flex-wrap: wrap; }
 .wa-empty { opacity: .5; text-align: center; padding: 18px 0; }
 
 /* hover/flash highlight on the rendered doc */
-.wa-hl { outline: 2px solid var(--vscode-focusBorder, #0e639c) !important; outline-offset: 2px; background: rgba(14, 99, 156, .08) !important; }
+.wa-hl { outline: 2px solid var(--wa-accent) !important; outline-offset: 2px; background: rgba(14, 99, 156, .08) !important; }
 .wa-flash { animation: wa-flash 1.1s ease; }
-@keyframes wa-flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 3px var(--vscode-focusBorder, #0e639c); } }
+@keyframes wa-flash { 0%, 100% { box-shadow: none; } 30% { box-shadow: 0 0 0 3px var(--wa-accent); } }
 
 .wa-tip {
   position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 2147483647;
-  background: var(--vscode-notifications-background, #252526); color: var(--vscode-notifications-foreground, var(--vscode-foreground));
-  border: 1px solid var(--vscode-notifications-border, #454545);
+  background: var(--wa-bg-2); color: var(--wa-fg); border: 1px solid var(--wa-border);
   padding: 7px 14px; border-radius: 20px; font-size: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
 }
 
 .wa-launcher {
   position: fixed; right: 16px; bottom: 16px; z-index: 2147483645; display: none;
   width: 46px; height: 46px; border-radius: 50%; cursor: pointer; text-align: center; line-height: 46px; font-size: 20px;
-  background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #fff);
+  background: var(--wa-accent); color: var(--wa-accent-fg);
   box-shadow: 0 4px 16px rgba(0, 0, 0, .35); transition: transform .12s ease;
 }
 .wa-launcher:hover { transform: scale(1.08); }
@@ -109,23 +139,21 @@
 .wa-launcher .wa-badge {
   position: absolute; top: -2px; right: -2px; min-width: 18px; height: 18px; line-height: 18px; padding: 0 4px;
   box-sizing: border-box; border-radius: 9px; font-size: 11px; font-weight: 600; display: none;
-  background: var(--vscode-activityBarBadge-background, #f53f3f); color: var(--vscode-activityBarBadge-foreground, #fff);
+  background: var(--wa-badge-bg); color: var(--wa-badge-fg);
 }
 
 /* top-right outline / TOC */
 .wa-toc {
   position: fixed; top: 16px; right: 16px; z-index: 2147483644; width: 270px; max-height: 72vh;
   display: flex; flex-direction: column;
-  font: 12px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--vscode-foreground);
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #444));
+  font: 12px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--wa-fg);
+  background: var(--wa-bg); border: 1px solid var(--wa-border);
   border-radius: 10px; box-shadow: 0 8px 32px rgba(0, 0, 0, .3); overflow: hidden;
 }
 .wa-toc.wa-hidden { display: none; }
 .wa-toc-hd {
   display: flex; align-items: center; gap: 8px; padding: 8px 12px; user-select: none;
-  background: var(--vscode-titleBar-activeBackground, #2a2d2e);
-  color: var(--vscode-titleBar-activeForeground, var(--vscode-foreground));
+  background: var(--wa-bg-2); color: var(--wa-fg-2);
 }
 .wa-toc-hd b { flex: 1; font-size: 12px; }
 .wa-toc-min { cursor: pointer; opacity: .7; font-size: 18px; line-height: 1; font-weight: 700; padding: 0 2px; }
@@ -134,11 +162,11 @@
 .wa-toc-ul { list-style: none; margin: 0; padding: 0; }
 .wa-toc-li.wa-collapsed > .wa-toc-ul { display: none; }
 .wa-toc-row { display: flex; align-items: flex-start; gap: 3px; padding: 3px 4px; border-radius: 5px; }
-.wa-toc-row:hover { background: var(--vscode-list-hoverBackground, rgba(255, 255, 255, .06)); }
+.wa-toc-row:hover { background: var(--wa-hover); }
 .wa-toc-tw { flex: 0 0 13px; text-align: center; cursor: pointer; opacity: .55; font-size: 10px; line-height: 1.7; }
 .wa-toc-tw:hover { opacity: 1; }
 .wa-toc-label { flex: 1; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.wa-toc-label:hover { color: var(--vscode-textLink-foreground, #3794ff); text-decoration: underline; }
+.wa-toc-label:hover { color: var(--wa-link); text-decoration: underline; }
 .wa-toc-row.lvl1 .wa-toc-label { font-weight: 600; }
 .wa-toc-row.lvl2 { padding-left: 14px; }
 .wa-toc-row.lvl3 { padding-left: 28px; }
@@ -146,42 +174,37 @@
 .wa-toc-launcher {
   position: fixed; top: 16px; right: 16px; z-index: 2147483644; display: none; cursor: pointer; user-select: none;
   padding: 6px 12px; border-radius: 16px; font-size: 12px;
-  background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #fff);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
+  background: var(--wa-accent); color: var(--wa-accent-fg); box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
 }
 .wa-toc-launcher.wa-show { display: block; }
-.wa-toc-launcher:hover { background: var(--vscode-button-hoverBackground, #1177bb); }
+.wa-toc-launcher:hover { background: var(--wa-accent-hover); }
 
-/* selection bubble — appears next to a fresh text selection */
+/* selection bubble */
 .wa-bubble {
   position: fixed; z-index: 2147483647; display: none; cursor: pointer; user-select: none; white-space: nowrap;
   font-size: 12px; padding: 5px 11px; border-radius: 16px;
-  background: var(--vscode-button-background, #0e639c); color: var(--vscode-button-foreground, #fff);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
+  background: var(--wa-accent); color: var(--wa-accent-fg); box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
 }
-.wa-bubble:hover { background: var(--vscode-button-hoverBackground, #1177bb); }
+.wa-bubble:hover { background: var(--wa-accent-hover); }
 
-/* inline comment box — anchored near the selection */
+/* inline comment box */
 .wa-popover {
   position: fixed; z-index: 2147483647; display: none; width: 300px; max-width: 82vw;
-  font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--vscode-foreground);
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #444));
+  font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--wa-fg);
+  background: var(--wa-bg); border: 1px solid var(--wa-border);
   border-radius: 10px; box-shadow: 0 10px 36px rgba(0, 0, 0, .4); padding: 10px;
 }
 .wa-popover.wa-show { display: block; }
 .wa-popover .wa-form { border: none; margin: 0; padding: 0; background: none; }
 
-/* in-webview confirm dialog (window.confirm is disabled in VS Code webviews) */
+/* in-webview confirm dialog */
 .wa-mask {
   position: fixed; inset: 0; z-index: 2147483647; display: flex; align-items: center; justify-content: center;
   background: rgba(0, 0, 0, .45);
 }
 .wa-dialog {
   width: 300px; max-width: 82vw; padding: 16px; border-radius: 10px;
-  font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--vscode-foreground);
-  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #444));
-  box-shadow: 0 12px 40px rgba(0, 0, 0, .45);
+  font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--wa-fg);
+  background: var(--wa-bg); border: 1px solid var(--wa-border); box-shadow: 0 12px 40px rgba(0, 0, 0, .45);
 }
 .wa-dialog-msg { margin-bottom: 14px; }

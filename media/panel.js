@@ -8,7 +8,7 @@
   'use strict';
 
   var vscodeApi = acquireVsCodeApi();
-  var BOOT = window.__WA_BOOTSTRAP__ || { fileName: 'document', filePath: '', source: '', theme: 'github', annotations: [] };
+  var BOOT = window.__WA_BOOTSTRAP__ || { fileName: 'document', filePath: '', source: '', theme: 'github', prefs: {}, annotations: [] };
   var SOURCE_LINES = String(BOOT.source || '').split(/\r?\n/);
   var TYPES = { comment: '评论', replacement: '替换', deletion: '删除' };
   var THEMES = [
@@ -38,19 +38,22 @@
     panel.innerHTML =
       '<div class="wa-hd"><b>🔖 批注</b><span class="wa-cnt"></span><span class="wa-min" title="最小化">—</span></div>' +
       '<div class="wa-bd">' +
-        '<div class="wa-theme-row">' +
-          '<span>🎨 样式</span>' +
-          '<select class="wa-theme">' +
+        '<div class="wa-ctrl-row">' +
+          '<label class="wa-ctrl"><span>🎨 样式</span><select class="wa-theme">' +
             THEMES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('') +
-          '</select>' +
-        '</div>' +
-        '<div class="wa-theme-row">' +
-          '<span>🖍 标注</span>' +
-          '<select class="wa-hl">' +
-            '<option value="default">选框 (默认)</option>' +
+          '</select></label>' +
+          '<label class="wa-ctrl"><span>🖍 标注</span><select class="wa-hl">' +
+            '<option value="default">选框</option>' +
             '<option value="subtle">低调</option>' +
             '<option value="underline">下划线</option>' +
-          '</select>' +
+          '</select></label>' +
+        '</div>' +
+        '<div class="wa-ctrl-row">' +
+          '<label class="wa-ctrl"><span>🎛 界面</span><select class="wa-ui">' +
+            '<option value="auto">跟随编辑器</option>' +
+            '<option value="dark">暗色</option>' +
+            '<option value="light">亮色</option>' +
+          '</select></label>' +
         '</div>' +
         '<div class="wa-hint">划选文字弹 💬 评论 · 按住 <b>Alt</b> 点击评论整段</div>' +
         '<div class="wa-row">' +
@@ -92,10 +95,16 @@
     };
 
     var hlSel = panel.querySelector('.wa-hl');
-    var savedHl = getSaved().hlStyle || 'default';
+    var savedHl = prefs().hlStyle || 'default';
     hlSel.value = savedHl;
     setHlClass(savedHl);
-    hlSel.onchange = function () { setHlClass(hlSel.value); patchState({ hlStyle: hlSel.value }); };
+    hlSel.onchange = function () { setHlClass(hlSel.value); postPref('hlStyle', hlSel.value); };
+
+    var uiSel = panel.querySelector('.wa-ui');
+    var savedUi = prefs().uiMode || 'auto';
+    uiSel.value = savedUi;
+    setUiClass(savedUi);
+    uiSel.onchange = function () { setUiClass(uiSel.value); postPref('uiMode', uiSel.value); };
     enableDrag();
     enableResize();
     applySavedHeight();
@@ -195,17 +204,17 @@
     document.body.appendChild(tocLauncher);
 
     renderToc();
-    if (getSaved().tocOpen === true) tocMaximize(); else tocMinimize();
+    if (prefs().tocOpen === true) tocMaximize(); else tocMinimize();
   }
   function tocMinimize() {
     toc.classList.add('wa-hidden');
     tocLauncher.classList.add('wa-show');
-    patchState({ tocOpen: false });
+    postPref('tocOpen', false);
   }
   function tocMaximize() {
     toc.classList.remove('wa-hidden');
     tocLauncher.classList.remove('wa-show');
-    patchState({ tocOpen: true });
+    postPref('tocOpen', true);
   }
 
   function minimize() {
@@ -455,6 +464,10 @@
     document.body.classList.remove('wa-hl-default', 'wa-hl-subtle', 'wa-hl-underline');
     document.body.classList.add('wa-hl-' + s);
   }
+  function setUiClass(m) {
+    document.body.classList.remove('wa-ui-auto', 'wa-ui-dark', 'wa-ui-light');
+    document.body.classList.add('wa-ui-' + m);
+  }
 
   /* ---------------- 批注高亮（琥珀色选框） ---------------- */
   function clearHighlights() {
@@ -623,15 +636,16 @@
     });
   }
   function applySavedHeight() {
-    var s = getSaved();
-    if (s && s.panelHeight) {
-      var h = Math.min(s.panelHeight, window.innerHeight - 24);
+    var ph = prefs().panelHeight;
+    if (ph) {
+      var h = Math.min(ph, window.innerHeight - 24);
       if (h >= MIN_H) { panel.style.height = h + 'px'; panel.style.maxHeight = 'none'; }
     }
   }
-  function getSaved() { try { return vscodeApi.getState() || {}; } catch (e) { return {}; } }
-  function patchState(obj) { var s = getSaved(); for (var k in obj) { if (obj.hasOwnProperty(k)) s[k] = obj[k]; } try { vscodeApi.setState(s); } catch (e) {} }
-  function saveHeight(h) { if (!h) return; patchState({ panelHeight: h }); }
+  // 偏好持久化走宿主 globalState（webview 的 getState 不跨"关闭再打开"），读 bootstrap、写消息
+  function prefs() { return BOOT.prefs || {}; }
+  function postPref(key, value) { BOOT.prefs = BOOT.prefs || {}; BOOT.prefs[key] = value; vscodeApi.postMessage({ type: 'pref', key: key, value: value }); }
+  function saveHeight(h) { if (!h) return; postPref('panelHeight', h); }
 
   /* ---------------- 拖动 ---------------- */
   function enableDrag() {
