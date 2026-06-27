@@ -19,7 +19,10 @@
         "command": "mdAnnotate.openPreview",
         "title": "Markdown 批注预览：打开",
         "category": "MD Annotate",
-        "icon": "$(comment-discussion)"
+        "icon": {
+          "light": "media/icon.svg",
+          "dark": "media/icon.svg"
+        }
       }
     ],
     "menus": {
