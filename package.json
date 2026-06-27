@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "netease-local",
   "license": "MIT",
+  "icon": "media/icon-128.png",
   "engines": {
     "vscode": "^1.84.0"
   },
