@@ -1,0 +1,52 @@
+.gitignore
+  f986361cf8f1c3ec 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "f5b5a27177dcaa344ca12aa1d59a96c7cf7c07a4",
+  "prompts": {
+    "f986361cf8f1c3ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90eb4937-b1cf-4ba4-8586-7fbe65d84125",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "网易 Netease",
+      "messages": [],
+      "total_additions": 30,
+      "total_deletions": 9,
+      "accepted_lines": 30,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        ".vscodeignore": {
+          "additions": 1,
+          "accepted_lines": 1
+        },
+        "src/extension.ts": {
+          "additions": 15,
+          "deletions": 5,
+          "accepted_lines": 15
+        },
+        "media/panel.js": {
+          "additions": 11,
+          "deletions": 3,
+          "accepted_lines": 11
+        },
+        ".gitignore": {
+          "additions": 1,
+          "accepted_lines": 1
+        },
+        "media/panel.css": {
+          "additions": 1,
+          "accepted_lines": 1
+        },
+        "README.md": {
+          "additions": 1,
+          "deletions": 1,
+          "accepted_lines": 1
+        }
+      }
+    }
+  }
+}
