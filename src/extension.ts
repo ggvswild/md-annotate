@@ -243,10 +243,11 @@ class AnnotatePanel {
   }
 
   private async saveAnnotationsFile(annotations: Annotation[]): Promise<void> {
-    const out = buildOutputUri(this.target);
+    const now = new Date();
+    const out = buildOutputUri(this.target, stamp(now));
     const payload = {
       file: workspaceRelative(this.target),
-      generatedAt: new Date().toISOString(),
+      generatedAt: now.toISOString(),
       count: annotations.length,
       annotations
     };
@@ -283,11 +284,20 @@ class AnnotatePanel {
   }
 }
 
-/** Build the sibling `<basename>.annotations.json` path next to the markdown file. */
-function buildOutputUri(target: vscode.Uri): vscode.Uri {
+/** Build a timestamped sibling `<basename>-<yyyyMMdd-HHmmss>.annotations.json` path. */
+function buildOutputUri(target: vscode.Uri, ts: string): vscode.Uri {
   const dir = path.dirname(target.fsPath);
   const base = path.basename(target.fsPath).replace(/\.mdx?$/i, '');
-  return vscode.Uri.file(path.join(dir, `${base}.annotations.json`));
+  return vscode.Uri.file(path.join(dir, `${base}-${ts}.annotations.json`));
+}
+
+/** Local-time timestamp as yyyyMMdd-HHmmss. */
+function stamp(d: Date): string {
+  const p = (n: number) => (n < 10 ? '0' + n : '' + n);
+  return (
+    '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) +
+    '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds())
+  );
 }
 
 /** Rewrite relative <img src> to webview URIs so local images render in the preview. */
