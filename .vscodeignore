@@ -1,4 +1,5 @@
 .vscode/**
+.omc/**
 src/**
 docs/**
 node_modules/**
