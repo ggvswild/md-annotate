@@ -1,0 +1,37 @@
+media/panel.js
+  f986361cf8f1c3ec 39,69-70
+media/panel.css
+  f986361cf8f1c3ec 48,65-67,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "8d8d99dbe002ace1a463c80f41bf6837eaf01dc7",
+  "prompts": {
+    "f986361cf8f1c3ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90eb4937-b1cf-4ba4-8586-7fbe65d84125",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "网易 Netease",
+      "messages": [],
+      "total_additions": 8,
+      "total_deletions": 23,
+      "accepted_lines": 8,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "media/panel.css": {
+          "additions": 5,
+          "deletions": 6,
+          "accepted_lines": 5
+        },
+        "media/panel.js": {
+          "additions": 3,
+          "deletions": 17,
+          "accepted_lines": 3
+        }
+      }
+    }
+  }
+}
