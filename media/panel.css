@@ -82,6 +82,7 @@
 .wa-li .wa-del:hover { opacity: 1; color: var(--vscode-errorForeground, #f48771); }
 .wa-li .wa-goto { display: inline-block; margin-top: 6px; font-size: 11px; opacity: .75; color: var(--vscode-textLink-foreground, #3794ff); }
 .wa-li .wa-goto:hover { opacity: 1; text-decoration: underline; }
+.wa-li .wa-time { position: absolute; right: 9px; bottom: 8px; font-size: 10px; opacity: .45; font-variant-numeric: tabular-nums; }
 .wa-ft { display: flex; gap: 6px; padding: 9px 12px; border-top: 1px solid var(--vscode-editorWidget-border, #444); flex-wrap: wrap; }
 .wa-empty { opacity: .5; text-align: center; padding: 18px 0; }
 
