@@ -9,6 +9,14 @@
   border-radius: 10px; box-shadow: 0 8px 32px rgba(0, 0, 0, .3); overflow: hidden;
 }
 .wa-panel.wa-open { display: flex; }
+.wa-resize {
+  position: absolute; top: 0; left: 0; right: 0; height: 7px; z-index: 5; cursor: ns-resize;
+}
+.wa-resize::after {
+  content: ''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%);
+  width: 40px; height: 3px; border-radius: 2px; background: transparent; transition: background .12s ease;
+}
+.wa-resize:hover::after { background: var(--vscode-focusBorder, #0e639c); }
 .wa-hd {
   display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: move; user-select: none;
   background: var(--vscode-titleBar-activeBackground, #2a2d2e);
@@ -122,3 +130,17 @@
 }
 .wa-popover.wa-show { display: block; }
 .wa-popover .wa-form { border: none; margin: 0; padding: 0; background: none; }
+
+/* in-webview confirm dialog (window.confirm is disabled in VS Code webviews) */
+.wa-mask {
+  position: fixed; inset: 0; z-index: 2147483647; display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, .45);
+}
+.wa-dialog {
+  width: 300px; max-width: 82vw; padding: 16px; border-radius: 10px;
+  font: 13px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--vscode-foreground);
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #444));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .45);
+}
+.wa-dialog-msg { margin-bottom: 14px; }
