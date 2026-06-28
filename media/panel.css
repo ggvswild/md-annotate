@@ -191,7 +191,7 @@ body.wa-ui-light {
 
 /* top-right outline / TOC */
 .wa-toc {
-  position: fixed; top: 16px; right: 16px; z-index: 2147483644; width: 270px; max-height: 72vh;
+  position: fixed; top: 16px; left: 16px; z-index: 2147483644; width: 270px; max-height: 72vh;
   display: flex; flex-direction: column;
   font: 12px/1.5 var(--vscode-font-family, -apple-system, system-ui, sans-serif); color: var(--wa-fg);
   background: var(--wa-bg); border: 1px solid var(--wa-border);
@@ -219,7 +219,7 @@ body.wa-ui-light {
 .wa-toc-row.lvl3 { padding-left: 28px; }
 .wa-toc-row.lvl4 { padding-left: 42px; opacity: .85; }
 .wa-toc-launcher {
-  position: fixed; top: 16px; right: 16px; z-index: 2147483644; display: none; cursor: pointer; user-select: none;
+  position: fixed; top: 16px; left: 16px; z-index: 2147483644; display: none; cursor: pointer; user-select: none;
   padding: 6px 12px; border-radius: 16px; font-size: 12px;
   background: var(--wa-accent); color: var(--wa-accent-fg); box-shadow: 0 3px 12px rgba(0, 0, 0, .35);
 }
