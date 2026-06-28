@@ -77,6 +77,22 @@ body.wa-ui-light {
   flex: 1; min-width: 0; padding: 5px 6px; border-radius: 6px; font: inherit; font-size: 12px;
   border: 1px solid var(--wa-input-border); background: var(--wa-input-bg); color: var(--wa-fg);
 }
+
+/* 搜索批注栏（由"更多"菜单触发，实时过滤列表） */
+.wa-search {
+  display: none; align-items: center; gap: 6px; margin-bottom: 8px; padding: 3px 6px;
+  border: 1px solid var(--wa-input-border); border-radius: 7px; background: var(--wa-input-bg);
+}
+.wa-search.wa-on { display: flex; }
+.wa-search-input {
+  flex: 1; min-width: 0; border: none; outline: none; background: none;
+  color: var(--wa-input-fg); font: inherit; font-size: 12px; padding: 3px 2px;
+}
+.wa-search-cnt { flex: 0 0 auto; font-size: 11px; opacity: .6; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wa-search-cnt.wa-search-none { color: var(--wa-error); opacity: 1; }
+.wa-search-x { flex: 0 0 auto; cursor: pointer; opacity: .55; font-size: 15px; line-height: 1; padding: 0 2px; }
+.wa-search-x:hover { opacity: 1; }
+.wa-mark { background: #ffe082; color: #1a1a1a; border-radius: 2px; padding: 0 1px; }
 .wa-row { display: flex; gap: 6px; margin-bottom: 8px; }
 .wa-btn {
   flex: 1; padding: 7px 8px; border-radius: 7px; cursor: pointer; font-size: 12px; text-align: center;
@@ -112,6 +128,8 @@ body.wa-ui-light {
 .wa-li .wa-del:hover { opacity: 1; color: var(--wa-error); }
 .wa-li .wa-edit { display: inline-block; margin-top: 6px; margin-right: 12px; font-size: 11px; opacity: .75; cursor: pointer; color: var(--wa-link); }
 .wa-li .wa-edit:hover { opacity: 1; text-decoration: underline; }
+.wa-li .wa-copyone { display: inline-block; margin-top: 6px; margin-right: 12px; font-size: 11px; opacity: .75; cursor: pointer; color: var(--wa-link); }
+.wa-li .wa-copyone:hover { opacity: 1; text-decoration: underline; }
 .wa-li .wa-goto { display: inline-block; margin-top: 6px; font-size: 11px; opacity: .75; color: var(--wa-link); }
 .wa-li .wa-goto:hover { opacity: 1; text-decoration: underline; }
 .wa-li .wa-time { position: absolute; right: 9px; bottom: 8px; font-size: 10px; opacity: .45; font-variant-numeric: tabular-nums; }
@@ -237,6 +255,7 @@ body.wa-ui-light {
 .wa-menu-item:hover { background: var(--wa-hover); }
 .wa-menu-item.wa-disabled { opacity: .4; cursor: default; }
 .wa-menu-item.wa-disabled:hover { background: none; }
+.wa-menu-item.wa-danger { color: var(--wa-error); }
 .wa-menu-sep { height: 1px; margin: 4px 6px; background: var(--wa-border); }
 
 /* in-webview confirm dialog */

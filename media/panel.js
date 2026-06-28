@@ -24,7 +24,8 @@
   var altDown = false;
   var hover = null;
   var panel, listEl, cntEl, launcher, badgeEl;
-  var bubble = null, popover = null, lastRect = null, pendingPayload = null, ctxMenu = null;
+  var searchEl, searchInput, searchCntEl, searchQuery = '';
+  var bubble = null, popover = null, lastRect = null, pendingPayload = null, ctxMenu = null, moreMenu = null;
   var toc = null, tocBody = null, tocLauncher = null;
 
   build();
@@ -55,12 +56,17 @@
             '<option value="light">亮色</option>' +
           '</select></label>' +
         '</div>' +
+        '<div class="wa-search">' +
+          '<input class="wa-search-input" type="text" placeholder="搜索批注文字 / 评论意见…">' +
+          '<span class="wa-search-cnt"></span>' +
+          '<span class="wa-search-x" title="关闭搜索 (Esc)">×</span>' +
+        '</div>' +
         '<ul class="wa-list"></ul>' +
       '</div>' +
       '<div class="wa-ft">' +
         '<div class="wa-btn wa-export">⬇ 导出 JSON</div>' +
         '<div class="wa-btn wa-copy">📋 复制</div>' +
-        '<div class="wa-btn wa-clear">🗑 清空</div>' +
+        '<div class="wa-btn wa-more">⋯ 更多</div>' +
       '</div>';
     document.body.appendChild(panel);
 
@@ -69,14 +75,16 @@
     var fileEl = panel.querySelector('.wa-file');
     if (BOOT.fileName) { fileEl.textContent = BOOT.fileName; fileEl.title = BOOT.fileName; }
 
+    searchEl = panel.querySelector('.wa-search');
+    searchInput = panel.querySelector('.wa-search-input');
+    searchCntEl = panel.querySelector('.wa-search-cnt');
+    searchInput.addEventListener('input', function () { searchQuery = searchInput.value.trim(); render(); });
+    searchInput.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); closeSearch(); } });
+    panel.querySelector('.wa-search-x').onclick = closeSearch;
+
     panel.querySelector('.wa-export').onclick = exportJson;
     panel.querySelector('.wa-copy').onclick = copyJson;
-    panel.querySelector('.wa-clear').onclick = function () {
-      if (!items.length) return tip('没有批注可清空');
-      confirmBox('清空本文件全部批注？此操作不可撤销。', function () {
-        items = []; persist(); render(); tip('已清空全部批注');
-      });
-    };
+    panel.querySelector('.wa-more').onclick = function (e) { showMoreMenu(e.currentTarget); };
     panel.querySelector('.wa-min').onclick = minimize;
 
     var themeSel = panel.querySelector('.wa-theme');
@@ -299,6 +307,71 @@
     ctxMenu.style.top = Math.max(pad, top) + 'px';
   }
 
+  /* ---------------- 底部"更多"菜单（搜索批注 / 清空） ---------------- */
+  function clearAll() {
+    if (!items.length) return tip('没有批注可清空');
+    confirmBox('清空本文件全部批注？此操作不可撤销。', function () {
+      items = []; persist(); render(); tip('已清空全部批注');
+    });
+  }
+  function closeMoreMenu() { if (moreMenu) { moreMenu.remove(); moreMenu = null; } }
+  function showMoreMenu(anchor) {
+    closeMoreMenu();
+    var entries = [
+      { label: '🔍 搜索批注', act: openSearch },
+      { sep: true },
+      { label: '🗑 清空批注', act: clearAll, danger: true }
+    ];
+    moreMenu = document.createElement('div');
+    moreMenu.className = 'wa-menu';
+    moreMenu.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    entries.forEach(function (en) {
+      if (en.sep) { var s = document.createElement('div'); s.className = 'wa-menu-sep'; moreMenu.appendChild(s); return; }
+      var it = document.createElement('div');
+      it.className = 'wa-menu-item' + (en.danger ? ' wa-danger' : '');
+      it.textContent = en.label;
+      it.onclick = function () { closeMoreMenu(); en.act(); };
+      moreMenu.appendChild(it);
+    });
+    document.body.appendChild(moreMenu);
+    var r = anchor.getBoundingClientRect(), w = moreMenu.offsetWidth, h = moreMenu.offsetHeight, pad = 6;
+    var left = r.right - w; if (left < pad) left = pad;
+    var top = r.top - h - 6; if (top < pad) top = r.bottom + 6;
+    moreMenu.style.left = left + 'px';
+    moreMenu.style.top = top + 'px';
+  }
+
+  /* ---------------- 搜索批注（过滤列表 + 高亮命中） ---------------- */
+  function openSearch() {
+    maximize(); // 确保面板已展开
+    searchEl.classList.add('wa-on');
+    searchInput.focus(); searchInput.select();
+    if (searchInput.value) { searchQuery = searchInput.value.trim(); render(); }
+  }
+  function closeSearch() {
+    searchEl.classList.remove('wa-on');
+    searchQuery = ''; searchInput.value = '';
+    render();
+  }
+  function updateSearchCount(shown) {
+    if (!searchEl || !searchEl.classList.contains('wa-on')) return;
+    if (!searchQuery) { searchCntEl.textContent = ''; searchCntEl.classList.remove('wa-search-none'); }
+    else if (!shown) { searchCntEl.textContent = '无匹配'; searchCntEl.classList.add('wa-search-none'); }
+    else { searchCntEl.textContent = shown + ' 条'; searchCntEl.classList.remove('wa-search-none'); }
+  }
+  // 先转义文本，再在转义后的串上按转义后的 query 包 <mark>，避免特殊字符错位
+  function highlightMatch(text, q) {
+    var escaped = esc(text);
+    if (!q) return escaped;
+    var eq = esc(q), lower = escaped.toLowerCase(), lq = eq.toLowerCase();
+    var out = '', i = 0, at;
+    while ((at = lower.indexOf(lq, i)) !== -1) {
+      out += escaped.slice(i, at) + '<mark class="wa-mark">' + escaped.slice(at, at + eq.length) + '</mark>';
+      i = at + eq.length;
+    }
+    return out + escaped.slice(i);
+  }
+
   /* ---------------- 就地评论框 ---------------- */
   function openForm(payload, rect, editIndex) {
     var editing = (editIndex != null);
@@ -437,7 +510,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Alt') { altDown = true; hideBubble(); }
-    if (e.key === 'Escape') { hideBubble(); closePopover(); clearHover(); closeContextMenu(); }
+    if (e.key === 'Escape') { hideBubble(); closePopover(); clearHover(); closeContextMenu(); closeMoreMenu(); }
   });
   document.addEventListener('keyup', function (e) {
     if (e.key === 'Alt') { altDown = false; clearHover(); }
@@ -473,13 +546,15 @@
     setTimeout(showBubble, 0);
   });
   document.addEventListener('mousedown', function (e) {
-    if (ctxMenu && ctxMenu.contains(e.target)) return; // 让菜单项 click 先触发
+    if (moreMenu && moreMenu.contains(e.target)) return; // 让"更多"菜单项 click 先触发
+    if (ctxMenu && ctxMenu.contains(e.target)) return;   // 让右键菜单项 click 先触发
     closeContextMenu();
+    closeMoreMenu();
     if (bubble && bubble.contains(e.target)) return;
     hideBubble();
     if (popover && !popover.contains(e.target)) closePopover();
   });
-  document.addEventListener('scroll', function () { hideBubble(); closeContextMenu(); }, true);
+  document.addEventListener('scroll', function () { hideBubble(); closeContextMenu(); closeMoreMenu(); }, true);
 
   /* 右键文档内容 → 针对插入点 / 图片 / 段落 弹同样的 💬 气泡 */
   document.addEventListener('contextmenu', function (e) {
@@ -506,9 +581,12 @@
     cntEl.textContent = n ? '(' + n + ')' : '';
     if (badgeEl) { badgeEl.textContent = n ? String(n) : ''; badgeEl.style.display = n ? 'block' : 'none'; }
     applyHighlights();
-    if (!n) { listEl.innerHTML = '<div class="wa-empty">还没有批注</div>'; return; }
+    if (!n) { listEl.innerHTML = '<div class="wa-empty">还没有批注</div>'; updateSearchCount(0); return; }
+    var q = searchQuery.toLowerCase(), shown = 0;
     listEl.innerHTML = '';
     items.forEach(function (it, i) {
+      if (q && ((it.selectedText || '') + ' ' + (it.comment || '')).toLowerCase().indexOf(q) === -1) return;
+      shown++;
       var li = document.createElement('li');
       li.className = 'wa-li';
       li.innerHTML =
@@ -516,9 +594,10 @@
         '<span class="wa-tag ' + it.type + '">' + (TYPES[it.type] || it.type) + '</span>' +
         '<b>#' + (i + 1) + '</b>' +
         '<span class="wa-line">L' + (it.sourceLineStart || '?') + '</span>' +
-        '<div class="wa-snip">' + esc(it.selectedText) + '</div>' +
-        (it.comment ? '<div class="wa-cmt">' + esc(it.comment) + '</div>' : '') +
+        '<div class="wa-snip">' + highlightMatch(it.selectedText, searchQuery) + '</div>' +
+        (it.comment ? '<div class="wa-cmt">' + highlightMatch(it.comment, searchQuery) + '</div>' : '') +
         '<span class="wa-edit" data-i="' + i + '">✎ 编辑</span>' +
+        '<span class="wa-copyone" data-i="' + i + '">📋 复制</span>' +
         '<span class="wa-goto" data-i="' + i + '">↪ 定位源码</span>' +
         '<span class="wa-time">' + fmtTime(it.createdAt) + '</span>';
       li.onclick = function (e) {
@@ -528,11 +607,19 @@
           openForm(it, { left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }, i);
           return;
         }
+        if (e.target.classList.contains('wa-copyone')) {
+          e.stopPropagation();
+          var one = JSON.stringify({ file: BOOT.filePath, count: 1, annotations: [it] }, null, 2);
+          vscodeApi.postMessage({ type: 'copy', text: one, message: '已复制该条批注 JSON' });
+          return;
+        }
         if (e.target.classList.contains('wa-goto')) { vscodeApi.postMessage({ type: 'reveal', line: it.sourceLineStart }); return; }
         focusAnnotation(it);
       };
       listEl.insertBefore(li, listEl.firstChild); // 新评论置顶（数据数组仍按时间顺序）
     });
+    if (q && !shown) listEl.innerHTML = '<div class="wa-empty">未找到匹配的批注</div>';
+    updateSearchCount(shown);
   }
   function flash(it) {
     if (!it.sourceLineStart) return;
