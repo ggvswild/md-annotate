@@ -124,6 +124,10 @@ body {
 .markdown-body [data-source-line]:hover { cursor: text; }
 ::selection { background: rgba(14, 99, 156, .35); }
 
+/* Cmd+F 查找高亮（CSS Custom Highlight API，不改 DOM） */
+::highlight(wa-find) { background-color: #ffe082; color: #1a1a1a; }
+::highlight(wa-find-current) { background-color: #ff9800; color: #1a1a1a; }
+
 /* ---------------- 批注高亮（琥珀色选框 #f59e0b） ---------------- */
 .wa-annot {
   position: relative;

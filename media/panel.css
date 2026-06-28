@@ -129,6 +129,34 @@ body.wa-ui-light {
   padding: 7px 14px; border-radius: 20px; font-size: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
 }
 
+/* 预览内查找框 (Cmd+F) */
+.wa-find-box {
+  position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2147483647; display: none;
+  align-items: center; gap: 6px; padding: 5px 6px 5px 10px;
+  background: var(--wa-bg); color: var(--wa-fg); border: 1px solid var(--wa-border);
+  border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, .35);
+  font: 12px var(--vscode-font-family, -apple-system, system-ui, sans-serif);
+}
+.wa-find-input {
+  width: 190px; padding: 4px 7px; border-radius: 5px; font: inherit; outline: none;
+  border: 1px solid var(--wa-input-border); background: var(--wa-input-bg); color: var(--wa-input-fg);
+}
+.wa-find-count { min-width: 50px; text-align: right; opacity: .75; font-variant-numeric: tabular-nums; }
+.wa-find-count.wa-find-none { color: var(--wa-error); opacity: 1; }
+.wa-find-btn { cursor: pointer; opacity: .65; padding: 2px 5px; border-radius: 4px; font-size: 12px; line-height: 1; }
+.wa-find-btn:hover { opacity: 1; background: var(--wa-hover); }
+.wa-find-x { font-size: 15px; }
+
+/* 开屏可关闭引导条 */
+.wa-onboard {
+  position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 2147483647;
+  display: flex; align-items: center; gap: 10px; max-width: 80vw;
+  background: var(--wa-bg-2); color: var(--wa-fg); border: 1px solid var(--wa-border);
+  padding: 7px 8px 7px 14px; border-radius: 20px; font-size: 12px; box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
+}
+.wa-onboard-x { cursor: pointer; opacity: .6; font-size: 16px; line-height: 1; padding: 0 4px; }
+.wa-onboard-x:hover { opacity: 1; }
+
 .wa-launcher {
   position: fixed; right: 16px; bottom: 16px; z-index: 2147483645; display: none;
   width: 46px; height: 46px; border-radius: 50%; cursor: pointer; text-align: center; line-height: 46px; font-size: 20px;

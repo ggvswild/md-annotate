@@ -29,7 +29,7 @@
 
   build();
   render();
-  tip('划选文字即可评论（选区旁出现 💬）；按住 Alt 点击评论整段');
+  showHint('划选文字即可评论（选区旁出现 💬）；按住 Alt 点击评论整段');
 
   /* ---------------- 面板 ---------------- */
   function build() {
@@ -679,6 +679,23 @@
   }
   function hideTip() { if (tipEl) { tipEl.remove(); tipEl = null; } if (tipTimer) clearTimeout(tipTimer); }
 
+  /* 开屏引导条：可关闭，关闭后持久化"不再显示" */
+  function showHint(msg) {
+    if (prefs().hintDismissed) return;
+    var el = document.createElement('div');
+    el.className = 'wa-onboard';
+    var txt = document.createElement('span');
+    txt.textContent = msg;
+    var x = document.createElement('span');
+    x.className = 'wa-onboard-x';
+    x.textContent = '×';
+    x.title = '关闭，不再显示';
+    x.onclick = function () { el.remove(); postPref('hintDismissed', true); };
+    el.appendChild(txt);
+    el.appendChild(x);
+    document.body.appendChild(el);
+  }
+
   /* VS Code webview 禁用 window.confirm，这里自绘确认框 */
   function confirmBox(message, onYes) {
     var mask = document.createElement('div');
@@ -757,6 +774,100 @@
       panel.style.top = (oy + e.clientY - sy) + 'px';
     });
     document.addEventListener('mouseup', function () { on = false; });
+  }
+
+  /* ---------------- 预览内查找 (Cmd+F)：带命中计数 ---------------- */
+  var findBox = null, findInput = null, findCountEl = null;
+  var findRanges = [], findCur = -1, hlAll = null, hlCur = null;
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); openFind(); }
+  }, true);
+
+  function buildFindBox() {
+    findBox = document.createElement('div');
+    findBox.className = 'wa-find-box';
+    findBox.innerHTML =
+      '<input class="wa-find-input" type="text" placeholder="在预览中查找">' +
+      '<span class="wa-find-count"></span>' +
+      '<span class="wa-find-btn wa-find-prev" title="上一处 (Shift+Enter)">▲</span>' +
+      '<span class="wa-find-btn wa-find-next" title="下一处 (Enter)">▼</span>' +
+      '<span class="wa-find-btn wa-find-x" title="关闭 (Esc)">×</span>';
+    document.body.appendChild(findBox);
+    findInput = findBox.querySelector('.wa-find-input');
+    findCountEl = findBox.querySelector('.wa-find-count');
+    findInput.addEventListener('input', function () { runFind(findInput.value); });
+    findInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); if (e.shiftKey) findPrev(); else findNext(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
+    });
+    findBox.querySelector('.wa-find-prev').onclick = findPrev;
+    findBox.querySelector('.wa-find-next').onclick = findNext;
+    findBox.querySelector('.wa-find-x').onclick = closeFind;
+  }
+  function openFind() {
+    if (!findBox) buildFindBox();
+    findBox.style.display = 'flex';
+    findInput.focus();
+    findInput.select();
+    if (findInput.value) runFind(findInput.value);
+  }
+  function closeFind() {
+    if (findBox) findBox.style.display = 'none';
+    findRanges = []; findCur = -1;
+    clearFindHighlights();
+  }
+  function runFind(q) {
+    findRanges = findAll(q);
+    findCur = findRanges.length ? 0 : -1;
+    updateFind();
+  }
+  function updateFind() {
+    if (!findInput.value) { findCountEl.textContent = ''; findCountEl.classList.remove('wa-find-none'); }
+    else if (!findRanges.length) { findCountEl.textContent = '无结果'; findCountEl.classList.add('wa-find-none'); }
+    else { findCountEl.textContent = (findCur + 1) + '/' + findRanges.length; findCountEl.classList.remove('wa-find-none'); }
+    paintFind();
+    if (findCur >= 0) scrollToRange(findRanges[findCur]);
+  }
+  function findNext() { if (!findRanges.length) return; findCur = (findCur + 1) % findRanges.length; updateFind(); }
+  function findPrev() { if (!findRanges.length) return; findCur = (findCur - 1 + findRanges.length) % findRanges.length; updateFind(); }
+
+  function buildTextMap(root) {
+    var text = '', map = [], walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n;
+    while ((n = walker.nextNode())) {
+      var v = n.nodeValue;
+      for (var i = 0; i < v.length; i++) { text += v[i]; map.push({ node: n, offset: i }); }
+    }
+    return { text: text, map: map };
+  }
+  function findAll(q) {
+    var ranges = [];
+    q = String(q || '');
+    if (!q) return ranges;
+    var tm = buildTextMap(doc), hay = tm.text.toLowerCase(), needle = q.toLowerCase();
+    var idx = hay.indexOf(needle);
+    while (idx !== -1) {
+      var s = tm.map[idx], e = tm.map[idx + needle.length - 1];
+      if (s && e) {
+        try { var r = document.createRange(); r.setStart(s.node, s.offset); r.setEnd(e.node, e.offset + 1); ranges.push(r); } catch (ex) {}
+      }
+      idx = hay.indexOf(needle, idx + Math.max(1, needle.length));
+    }
+    return ranges;
+  }
+  function paintFind() {
+    if (!window.CSS || !CSS.highlights || typeof Highlight === 'undefined') return;
+    if (!hlAll) { hlAll = new Highlight(); CSS.highlights.set('wa-find', hlAll); }
+    if (!hlCur) { hlCur = new Highlight(); CSS.highlights.set('wa-find-current', hlCur); }
+    hlAll.clear(); hlCur.clear();
+    findRanges.forEach(function (r, i) { if (i === findCur) hlCur.add(r); else hlAll.add(r); });
+  }
+  function clearFindHighlights() { if (hlAll) hlAll.clear(); if (hlCur) hlCur.clear(); }
+  function scrollToRange(r) {
+    try {
+      var node = r.startContainer, el = node.nodeType === 1 ? node : node.parentElement;
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } catch (e) {}
   }
 
   /* ---------------- host 消息 ---------------- */

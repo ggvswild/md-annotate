@@ -28,7 +28,7 @@ interface Annotation {
 const THEMES = ['vscode', 'github', 'sepia', 'dark', 'notion'];
 
 /** UI preference keys allowed to be persisted from the webview. */
-const PREF_KEYS = ['hlStyle', 'uiMode', 'panelHeight', 'tocOpen'];
+const PREF_KEYS = ['hlStyle', 'uiMode', 'panelHeight', 'tocOpen', 'hintDismissed'];
 
 const md = createMarkdownRenderer();
 
