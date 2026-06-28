@@ -1,0 +1,49 @@
+media/markdown.css
+  f986361cf8f1c3ec 127-130
+media/panel.css
+  f986361cf8f1c3ec 132-159
+src/extension.ts
+  f986361cf8f1c3ec 31
+media/panel.js
+  f986361cf8f1c3ec 32,682-698,779-872
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "69db1a5276b7780ff7545448bacd9326f00c5cd4",
+  "prompts": {
+    "f986361cf8f1c3ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "90eb4937-b1cf-4ba4-8586-7fbe65d84125",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "网易 Netease",
+      "messages": [],
+      "total_additions": 146,
+      "total_deletions": 3,
+      "accepted_lines": 145,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "media/panel.js": {
+          "additions": 112,
+          "deletions": 1,
+          "accepted_lines": 112
+        },
+        "media/panel.css": {
+          "additions": 28,
+          "accepted_lines": 28
+        },
+        "src/extension.ts": {
+          "additions": 2,
+          "deletions": 2,
+          "accepted_lines": 1
+        },
+        "media/markdown.css": {
+          "additions": 4,
+          "accepted_lines": 4
+        }
+      }
+    }
+  }
+}
