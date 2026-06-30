@@ -1,0 +1,111 @@
+media/themes/github-dimmed.css
+  2808b8f7c42b09bc 1-1128
+media/themes/github-auto.css
+  2808b8f7c42b09bc 1-1252
+media/panel.js
+  2808b8f7c42b09bc 11,15-18,90,94,635,638-641
+.vscodeignore
+  2808b8f7c42b09bc 6-11
+media/themes/github-dark.css
+  2808b8f7c42b09bc 1-1128
+esbuild.js
+  2808b8f7c42b09bc 14-17
+src/markdown.ts
+  2808b8f7c42b09bc 1-109
+src/extension.ts
+  2808b8f7c42b09bc 3,27-45,50-52,179-181,210,221-227,230,236,247
+docs/markdown-case/_syntax-kitchen-sink.md
+  2808b8f7c42b09bc 1-120
+media/themes/github-light.css
+  2808b8f7c42b09bc 1-1128
+src/ambient.d.ts
+  2808b8f7c42b09bc 1-5
+media/markdown.css
+  2808b8f7c42b09bc 1-6,8-16,18-19,22-30,32-44,47-48,50,69,73,81,84,87,90-96
+package.json
+  2808b8f7c42b09bc 5,56,60,67-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "7ad1cac3c363bdb5dcc8f8b8de0be60776e53fb2",
+  "prompts": {
+    "2808b8f7c42b09bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a440faf3-979d-4b35-a101-1e2db9932d52",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "zhujiabin",
+      "messages": [],
+      "total_additions": 5077,
+      "total_deletions": 199,
+      "accepted_lines": 5059,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "src/ambient.d.ts": {
+          "additions": 5,
+          "accepted_lines": 5
+        },
+        "docs/markdown-case/_syntax-kitchen-sink.md": {
+          "additions": 120,
+          "accepted_lines": 120
+        },
+        "package.json": {
+          "additions": 11,
+          "deletions": 11,
+          "accepted_lines": 10
+        },
+        "media/themes/github-auto.css": {
+          "additions": 1252,
+          "accepted_lines": 1252
+        },
+        ".vscodeignore": {
+          "additions": 6,
+          "accepted_lines": 6
+        },
+        "src/extension.ts": {
+          "additions": 37,
+          "deletions": 29,
+          "accepted_lines": 37
+        },
+        "media/panel.js": {
+          "additions": 13,
+          "deletions": 8,
+          "accepted_lines": 13
+        },
+        "esbuild.js": {
+          "additions": 4,
+          "deletions": 1,
+          "accepted_lines": 4
+        },
+        "src/markdown.ts": {
+          "additions": 110,
+          "deletions": 1,
+          "accepted_lines": 109
+        },
+        "media/themes/github-light.css": {
+          "additions": 1128,
+          "accepted_lines": 1128
+        },
+        "media/themes/github-dark.css": {
+          "additions": 1128,
+          "accepted_lines": 1128
+        },
+        "media/markdown.css": {
+          "additions": 71,
+          "deletions": 149,
+          "accepted_lines": 55
+        },
+        "media/themes/github-dimmed.css": {
+          "additions": 1128,
+          "accepted_lines": 1128
+        },
+        "CLAUDE.md": {
+          "additions": 64,
+          "accepted_lines": 64
+        }
+      }
+    }
+  }
+}
