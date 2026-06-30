@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import MarkdownIt from 'markdown-it';
+import { renderMarkdown, warmupRenderer } from './markdown';
 
 /**
  * MD Annotate — open a Markdown file in an annotation preview webview.
@@ -24,13 +24,32 @@ interface Annotation {
   contextSuffix: string;
 }
 
-/** Available markdown preview themes (must match body.theme-* classes in markdown.css). */
-const THEMES = ['vscode', 'github', 'sepia', 'dark', 'notion'];
+/** Available markdown preview themes. Each maps to a pristine github-markdown-css
+ * file in media/themes/ and a body.theme-* class consumed by markdown.css. */
+const THEMES = ['auto', 'light', 'dark', 'dimmed'];
+
+/** theme id → vendored github-markdown-css filename (relative to media/themes/). */
+const THEME_FILES: Record<string, string> = {
+  auto: 'github-auto.css',
+  light: 'github-light.css',
+  dark: 'github-dark.css',
+  dimmed: 'github-dimmed.css'
+};
+
+/** Migrate themes persisted by older versions onto the new github-markdown-css set. */
+const LEGACY_THEME_MAP: Record<string, string> = {
+  vscode: 'auto',
+  github: 'light',
+  sepia: 'light',
+  notion: 'light'
+};
 
 /** UI preference keys allowed to be persisted from the webview. */
 const PREF_KEYS = ['hlStyle', 'uiMode', 'panelHeight', 'tocOpen', 'hintDismissed'];
 
-const md = createMarkdownRenderer();
+// Preload the markdown renderer (syntax-highlight grammars) at activation so the
+// first preview paints without waiting on grammar initialization.
+warmupRenderer();
 
 // One live panel per source file path.
 const panels = new Map<string, AnnotatePanel>();
@@ -157,8 +176,9 @@ class AnnotatePanel {
   }
 
   private currentTheme(): string {
-    const theme = this.context.globalState.get<string>('mdAnnotate.theme', 'github');
-    return THEMES.includes(theme) ? theme : 'github';
+    const raw = this.context.globalState.get<string>('mdAnnotate.theme', 'auto');
+    const theme = LEGACY_THEME_MAP[raw] ?? raw;
+    return THEMES.includes(theme) ? theme : 'auto';
   }
 
   /** UI preferences persisted in globalState so they survive reopening the preview. */
@@ -187,7 +207,7 @@ class AnnotatePanel {
 
     const webview = this.panel.webview;
     const docDir = path.dirname(this.target.fsPath);
-    const html = resolveImages(md.render(source), docDir, webview);
+    const html = resolveImages(await renderMarkdown(source), docDir, webview);
     const nonce = makeNonce();
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'panel.js')
@@ -198,13 +218,22 @@ class AnnotatePanel {
     const mdCssUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'markdown.css')
     );
+    // Webview URIs for every theme so the client can hot-swap stylesheets without a reload.
+    const themeCssUris: Record<string, string> = {};
+    for (const [id, file] of Object.entries(THEME_FILES)) {
+      themeCssUris[id] = webview
+        .asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'themes', file))
+        .toString();
+    }
 
     const theme = this.currentTheme();
+    const themeCssUri = themeCssUris[theme];
     const bootstrap = {
       fileName: path.basename(this.target.fsPath),
       filePath: workspaceRelative(this.target),
       source,
       theme,
+      themeCssUris,
       prefs: this.getPrefs(),
       annotations: this.loadSavedAnnotations()
     };
@@ -215,6 +244,7 @@ class AnnotatePanel {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; font-src ${webview.cspSource};">
+<link id="wa-theme-css" href="${themeCssUri}" rel="stylesheet">
 <link href="${mdCssUri}" rel="stylesheet">
 <link href="${panelCssUri}" rel="stylesheet">
 <title>批注预览</title>
@@ -342,28 +372,6 @@ function workspaceRelative(uri: vscode.Uri): string {
     return path.relative(folder.uri.fsPath, uri.fsPath);
   }
   return uri.fsPath;
-}
-
-/** markdown-it with a source-line mapping rule for every block token. */
-function createMarkdownRenderer(): MarkdownIt {
-  const renderer = new MarkdownIt({
-    html: true,
-    linkify: true,
-    typographer: false,
-    breaks: false
-  });
-
-  renderer.core.ruler.push('source_line', (state) => {
-    for (const token of state.tokens) {
-      if (token.map && token.nesting !== -1) {
-        token.attrSet('data-source-line', String(token.map[0] + 1));
-        token.attrSet('data-source-end', String(token.map[1]));
-      }
-    }
-    return false;
-  });
-
-  return renderer;
 }
 
 function makeNonce(): string {

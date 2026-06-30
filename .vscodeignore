@@ -3,6 +3,12 @@
 src/**
 docs/**
 node_modules/**
+# Ship only the externalized syntax-highlighter and its runtime deps (the rest is
+# bundled into dist/extension.js). starry-night reads onig.wasm from these at runtime.
+!node_modules/@wooorm/**
+!node_modules/vscode-oniguruma/**
+!node_modules/vscode-textmate/**
+!node_modules/import-meta-resolve/**
 esbuild.js
 tsconfig.json
 **/*.map

@@ -8,15 +8,14 @@
   'use strict';
 
   var vscodeApi = acquireVsCodeApi();
-  var BOOT = window.__WA_BOOTSTRAP__ || { fileName: 'document', filePath: '', source: '', theme: 'github', prefs: {}, annotations: [] };
+  var BOOT = window.__WA_BOOTSTRAP__ || { fileName: 'document', filePath: '', source: '', theme: 'auto', themeCssUris: {}, prefs: {}, annotations: [] };
   var SOURCE_LINES = String(BOOT.source || '').split(/\r?\n/);
   var TYPES = { comment: '评论', replacement: '替换', deletion: '删除' };
   var THEMES = [
-    ['vscode', '跟随编辑器'],
-    ['github', 'GitHub 浅色'],
-    ['sepia', 'Sepia 护眼'],
-    ['dark', '极简暗色'],
-    ['notion', 'Notion 宽松']
+    ['auto', '跟随编辑器'],
+    ['light', 'GitHub 浅色'],
+    ['dark', 'GitHub 深色'],
+    ['dimmed', 'GitHub 深色·淡化']
   ];
 
   var doc = document.getElementById('wa-doc');
@@ -88,10 +87,11 @@
     panel.querySelector('.wa-min').onclick = minimize;
 
     var themeSel = panel.querySelector('.wa-theme');
-    themeSel.value = BOOT.theme || 'github';
+    themeSel.value = BOOT.theme || 'auto';
     themeSel.onchange = function () {
       var t = themeSel.value;
       setThemeClass(t);
+      swapThemeCss(t);
       vscodeApi.postMessage({ type: 'theme', theme: t });
     };
 
@@ -632,8 +632,13 @@
 
   /* ---------------- 主题 / 标注样式类 ---------------- */
   function setThemeClass(t) {
-    document.body.classList.remove('theme-vscode', 'theme-github', 'theme-sepia', 'theme-dark', 'theme-notion');
+    document.body.classList.remove('theme-auto', 'theme-light', 'theme-dark', 'theme-dimmed');
     document.body.classList.add('theme-' + t);
+  }
+  function swapThemeCss(t) {
+    var link = document.getElementById('wa-theme-css');
+    var uris = BOOT.themeCssUris || {};
+    if (link && uris[t]) link.href = uris[t];
   }
   function setHlClass(s) {
     document.body.classList.remove('wa-hl-default', 'wa-hl-subtle', 'wa-hl-underline');

@@ -11,7 +11,10 @@ const options = {
   format: 'cjs',
   target: 'node18',
   // vscode is provided by the runtime, never bundle it.
-  external: ['vscode'],
+  // @wooorm/starry-night is ESM and loads an oniguruma .wasm at runtime via its
+  // own node_modules layout, which breaks when inlined — keep it external and
+  // ship its node_modules tree (see .vscodeignore). Everything else is bundled.
+  external: ['vscode', '@wooorm/starry-night'],
   sourcemap: true,
   logLevel: 'info'
 };

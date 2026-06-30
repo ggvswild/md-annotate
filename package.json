@@ -2,7 +2,7 @@
   "name": "md-annotate",
   "displayName": "Markdown 批注预览 · MD Annotate",
   "description": "在 Markdown 预览上划选文字/段落写批注，导出结构化 JSON 交给 AI 修改源文件。",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "netease-local",
   "license": "MIT",
   "icon": "media/icon-128.png",
@@ -53,17 +53,24 @@
   "scripts": {
     "build": "node esbuild.js && tsc --noEmit",
     "watch": "node esbuild.js --watch",
-    "package": "npx --yes @vscode/vsce package --no-dependencies -o md-annotate.vsix",
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository -o md-annotate.vsix",
     "vscode:prepublish": "node esbuild.js"
   },
   "dependencies": {
-    "markdown-it": "^14.1.0"
+    "@wooorm/starry-night": "^3.10.0"
   },
   "devDependencies": {
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.84.0",
     "esbuild": "^0.21.5",
+    "github-slugger": "^2.0.0",
+    "hast-util-to-html": "^9.0.5",
+    "markdown-it": "^14.1.0",
+    "markdown-it-anchor": "^9.2.0",
+    "markdown-it-emoji": "^3.0.0",
+    "markdown-it-footnote": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
     "typescript": "^5.4.5"
   }
 }
