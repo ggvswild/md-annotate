@@ -1,0 +1,28 @@
+CLAUDE.md
+  2808b8f7c42b09bc 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8-ntes.9",
+  "base_commit_sha": "f29ebc84f82a16a4253cb97036af779edbfca82f",
+  "prompts": {
+    "2808b8f7c42b09bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a440faf3-979d-4b35-a101-1e2db9932d52",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "zhujiabin",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 64,
+      "overriden_lines": 0,
+      "per_file_stats": {
+        "CLAUDE.md": {
+          "accepted_lines": 64
+        }
+      }
+    }
+  }
+}
